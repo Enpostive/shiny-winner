@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<JUCERPROJECT id="wUsEMM" name="SampleDatabase" projectType="guiapp" useAppConfig="0"
+              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1">
+  <MAINGROUP id="u9pUJF" name="SampleDatabase">
+    <GROUP id="{FE77B5A6-BFA1-2B26-A900-38023B89B77A}" name="Source">
+      <FILE id="ZCf9tg" name="Main.cpp" compile="1" resource="0" file="Source/Main.cpp"/>
+      <FILE id="LZbIyV" name="MainComponent.h" compile="0" resource="0" file="Source/MainComponent.h"/>
+      <FILE id="GlP95Q" name="MainComponent.cpp" compile="1" resource="0"
+            file="Source/MainComponent.cpp"/>
+    </GROUP>
+    <GROUP id="{2DA23674-8805-B282-73AB-BD820FCD3F87}" name="XDDSP">
+      <FILE id="WbXgHc" name="LICENSE" compile="0" resource="1" file="Source/XDDSP/LICENSE"/>
+      <FILE id="QarHua" name="README.md" compile="0" resource="1" file="Source/XDDSP/README.md"/>
+      <FILE id="k9yPYx" name="XDDSP.cpp" compile="1" resource="0" file="Source/XDDSP/XDDSP.cpp"/>
+      <FILE id="inH9z2" name="XDDSP.h" compile="0" resource="0" file="Source/XDDSP/XDDSP.h"/>
+      <FILE id="eIMvh4" name="XDDSP_Analysis.h" compile="0" resource="0"
+            file="Source/XDDSP/XDDSP_Analysis.h"/>
+      <FILE id="JYVrzd" name="XDDSP_BiquadKernel.h" compile="0" resource="0"
+            file="Source/XDDSP/XDDSP_BiquadKernel.h"/>
+      <FILE id="r2iTUE" name="XDDSP_Blep.h" compile="0" resource="0" file="Source/XDDSP/XDDSP_Blep.h"/>
+      <FILE id="zbgRbn" name="XDDSP_CircularBuffer.h" compile="0" resource="0"
+            file="Source/XDDSP/XDDSP_CircularBuffer.h"/>
+      <FILE id="YPc7dB" name="XDDSP_Classes.h" compile="0" resource="0" file="Source/XDDSP/XDDSP_Classes.h"/>
+      <FILE id="yAmh5J" name="XDDSP_Delay.h" compile="0" resource="0" file="Source/XDDSP/XDDSP_Delay.h"/>
+      <FILE id="f81DRe" name="XDDSP_Envelopes.h" compile="0" resource="0"
+            file="Source/XDDSP/XDDSP_Envelopes.h"/>
+      <FILE id="J87Lti" name="XDDSP_FFT.h" compile="0" resource="0" file="Source/XDDSP/XDDSP_FFT.h"/>
+      <FILE id="l8W7L7" name="XDDSP_Filters.h" compile="0" resource="0" file="Source/XDDSP/XDDSP_Filters.h"/>
+      <FILE id="c4mHiz" name="XDDSP_FIRImpulses.h" compile="0" resource="0"
+            file="Source/XDDSP/XDDSP_FIRImpulses.h"/>
+      <FILE id="pKmBuY" name="XDDSP_Functions.h" compile="0" resource="0"
+            file="Source/XDDSP/XDDSP_Functions.h"/>
+      <FILE id="sRa9Bw" name="XDDSP_Inputs.h" compile="0" resource="0" file="Source/XDDSP/XDDSP_Inputs.h"/>
+      <FILE id="QxwFF4" name="XDDSP_LinkwitzRileyKernel.h" compile="0" resource="0"
+            file="Source/XDDSP/XDDSP_LinkwitzRileyKernel.h"/>
+      <FILE id="czi4Do" name="XDDSP_Mixing.h" compile="0" resource="0" file="Source/XDDSP/XDDSP_Mixing.h"/>
+      <FILE id="tc5Mk6" name="XDDSP_Monitors.h" compile="0" resource="0"
+            file="Source/XDDSP/XDDSP_Monitors.h"/>
+      <FILE id="lVRm6u" name="XDDSP_Noise.h" compile="0" resource="0" file="Source/XDDSP/XDDSP_Noise.h"/>
+      <FILE id="qrchPD" name="XDDSP_Oscillators.h" compile="0" resource="0"
+            file="Source/XDDSP/XDDSP_Oscillators.h"/>
+      <FILE id="M7GYjj" name="XDDSP_Parameters.h" compile="0" resource="0"
+            file="Source/XDDSP/XDDSP_Parameters.h"/>
+      <FILE id="qpUj8n" name="XDDSP_PiecewiseEnvelopeData.h" compile="0"
+            resource="0" file="Source/XDDSP/XDDSP_PiecewiseEnvelopeData.h"/>
+      <FILE id="Z315RO" name="XDDSP_Polyphony.h" compile="0" resource="0"
+            file="Source/XDDSP/XDDSP_Polyphony.h"/>
+      <FILE id="BUAidc" name="XDDSP_Types.h" compile="0" resource="0" file="Source/XDDSP/XDDSP_Types.h"/>
+      <FILE id="OGdjzx" name="XDDSP_Utilities.h" compile="0" resource="0"
+            file="Source/XDDSP/XDDSP_Utilities.h"/>
+      <FILE id="oFAQeX" name="XDDSP_Waveshaper.h" compile="0" resource="0"
+            file="Source/XDDSP/XDDSP_Waveshaper.h"/>
+      <FILE id="NLZaQv" name="XDDSP_WindowFunctions.h" compile="0" resource="0"
+            file="Source/XDDSP/XDDSP_WindowFunctions.h"/>
+    </GROUP>
+    <GROUP id="{24C7A186-7E15-C1C9-CF01-B7E15AA20D1E}" name="sqlite3">
+      <FILE id="InveEa" name="sqlite_orm.h" compile="0" resource="0" file="../../sqlite3/sqlite_orm.h"/>
+      <FILE id="q4u5zV" name="sqlite3.c" compile="1" resource="0" file="../../sqlite3/sqlite3.c"/>
+      <FILE id="FufTV8" name="sqlite3.h" compile="0" resource="0" file="../../sqlite3/sqlite3.h"/>
+    </GROUP>
+  </MAINGROUP>
+  <MODULES>
+    <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_devices" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_formats" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_processors" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_utils" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_core" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_data_structures" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_events" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_graphics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_gui_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_gui_extra" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+  </MODULES>
+  <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1"/>
+  <EXPORTFORMATS>
+    <XCODE_MAC targetFolder="Builds/MacOSX">
+      <CONFIGURATIONS>
+        <CONFIGURATION isDebug="1" name="Debug" targetName="SampleDatabase"/>
+        <CONFIGURATION isDebug="0" name="Release" targetName="SampleDatabase"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="juce_audio_basics" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_devices" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_formats" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_processors" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_utils" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_core" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_data_structures" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_events" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_graphics" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_gui_basics" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_gui_extra" path="../../../../JUCE/modules"/>
+      </MODULEPATHS>
+    </XCODE_MAC>
+  </EXPORTFORMATS>
+</JUCERPROJECT>
