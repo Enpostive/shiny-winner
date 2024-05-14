@@ -13,14 +13,14 @@
 class SampleDatabaseApplication  : public juce::JUCEApplication
 {
 public:
- //==============================================================================
+//==============================================================================
  SampleDatabaseApplication() {}
  
  const juce::String getApplicationName() override       { return ProjectInfo::projectName; }
  const juce::String getApplicationVersion() override    { return ProjectInfo::versionString; }
  bool moreThanOneInstanceAllowed() override             { return true; }
  
- //==============================================================================
+//==============================================================================
  void initialise (const juce::String& commandLine) override
  {
   // This method is where you should put your application's initialisation code..
@@ -35,7 +35,7 @@ public:
   mainWindow = nullptr; // (deletes our window)
  }
  
- //==============================================================================
+//==============================================================================
  void systemRequestedQuit() override
  {
   // This is called when the app is being asked to quit: you can ignore this
@@ -50,7 +50,7 @@ public:
   // the other instance's command-line arguments were.
  }
  
- //==============================================================================
+//==============================================================================
  /*
   This class implements the desktop window that contains an instance of
   our MainComponent class.

@@ -4,6 +4,12 @@
               addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1">
   <MAINGROUP id="u9pUJF" name="SampleDatabase">
     <GROUP id="{FE77B5A6-BFA1-2B26-A900-38023B89B77A}" name="Source">
+      <FILE id="aZw4Do" name="DatabaseTableModel.h" compile="0" resource="0"
+            file="Source/DatabaseTableModel.h"/>
+      <FILE id="Sbt8I6" name="DatabaseControls.cpp" compile="1" resource="0"
+            file="Source/DatabaseControls.cpp"/>
+      <FILE id="uvKTWA" name="DatabaseControls.h" compile="0" resource="0"
+            file="Source/DatabaseControls.h"/>
       <FILE id="ZCf9tg" name="Main.cpp" compile="1" resource="0" file="Source/Main.cpp"/>
       <FILE id="LZbIyV" name="MainComponent.h" compile="0" resource="0" file="Source/MainComponent.h"/>
       <FILE id="GlP95Q" name="MainComponent.cpp" compile="1" resource="0"

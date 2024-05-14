@@ -1,10 +1,26 @@
 #include "MainComponent.h"
 
 //==============================================================================
-MainComponent::MainComponent()
+MainComponent::MainComponent() :
+resizerBar(&layout, 1, false)
 {
- // Make sure you set the size of the component after
- // you add any child components.
+ addAndMakeVisible(dummyLabel);
+ dummyLabel.setText("Yay!", juce::dontSendNotification);
+ 
+ 
+ addAndMakeVisible(databaseControls);
+  auto sampleList = databaseControls.listBox();
+ sampleList->getHeader().addColumn("File Name", 1, 300);
+ sampleList->getHeader().addColumn("Category", 2, 150);
+ 
+ addAndMakeVisible(resizerBar);
+ 
+ 
+ layout.setItemLayout(0, 100., -1., -0.5);
+ layout.setItemLayout(1, 8, 8, 8);
+ layout.setItemLayout(2, 100., -1., -0.5);
+ 
+
  setSize (800, 600);
  
  // Some platforms require permissions to open input channels so request that here
@@ -69,7 +85,6 @@ void MainComponent::paint (juce::Graphics& g)
 
 void MainComponent::resized()
 {
- // This is called when the MainContentComponent is resized.
- // If you add any child components, this is where you should
- // update their positions.
+ juce::Component* comps[] = {&dummyLabel, &resizerBar, &databaseControls};
+ layout.layOutComponents(comps, 3, 0, 0, getWidth(), getHeight(), true, true);
 }
