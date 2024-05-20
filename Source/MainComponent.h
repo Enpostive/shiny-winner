@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 #include "DatabaseControls.h"
+#include "DatabaseTableModel.h"
 
 //==============================================================================
 /*
@@ -32,8 +33,17 @@ private:
  juce::StretchableLayoutResizerBar resizerBar;
  
  juce::Label dummyLabel;
- DatabaseControls databaseControls;
  
+ SampleDatabaseConnection dbConn;
+ 
+ DatabaseControls databaseControls;
+ DatabaseTableModel tableModel;
+ 
+ juce::TooltipWindow tooltipWindow;
+ 
+ void repaintSampleList();
+ 
+ juce::TimedCallback repaintTimer {[&](){ repaintSampleList(); }};
  
  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
 };

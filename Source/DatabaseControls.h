@@ -33,7 +33,9 @@
     Describe your class and how it works here!
                                                                     //[/Comments]
 */
-class DatabaseControls  : public juce::Component
+class DatabaseControls  : public juce::Component,
+                          public juce::Button::Listener,
+                          public juce::ComboBox::Listener
 {
 public:
     //==============================================================================
@@ -44,10 +46,20 @@ public:
     //[UserMethods]     -- You can add your own custom methods in this section.
     juce::TableListBox* listBox()
     { return sampleList.get(); }
+
+ std::function<void ()> onImportClicked;
+ std::function<void ()> onPreviewClicked;
+ std::function<void (const juce::String&)> onSearchStringChanged;
+ std::function<void (int)> onFilterChange;
+
+ void resetFilterItems();
+ void addFilterItem(const juce::String &item, int itemId);
     //[/UserMethods]
 
     void paint (juce::Graphics& g) override;
     void resized() override;
+    void buttonClicked (juce::Button* buttonThatWasClicked) override;
+    void comboBoxChanged (juce::ComboBox* comboBoxThatHasChanged) override;
 
 
 
@@ -59,6 +71,8 @@ private:
     std::unique_ptr<juce::TableListBox> sampleList;
     std::unique_ptr<juce::TextButton> importButton;
     std::unique_ptr<juce::TextButton> previewButton;
+    std::unique_ptr<juce::TextEditor> searchbar;
+    std::unique_ptr<juce::ComboBox> categoryFilter;
 
 
     //==============================================================================

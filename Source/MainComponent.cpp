@@ -2,19 +2,43 @@
 
 //==============================================================================
 MainComponent::MainComponent() :
-resizerBar(&layout, 1, false)
+resizerBar(&layout, 1, false),
+tableModel(dbConn)
 {
+ tableModel.connectToTable(databaseControls.listBox());
+ databaseControls.listBox()->setModel(&tableModel);
+
+ databaseControls.onSearchStringChanged = [&](const juce::String &term)
+ {
+  if (term.isNotEmpty()) tableModel.setSearchTerm(term);
+  else tableModel.resetSearch();
+  repaintTimer.startTimer(20);
+ };
+
+ databaseControls.onFilterChange = [&](int categoryIDSelected)
+ {
+  if (categoryIDSelected == -1)
+  {
+   tableModel.clearFilterCategory();
+  }
+  else
+  {
+   tableModel.setFilterCategory(categoryIDSelected);
+  }
+  repaintTimer.startTimer(20);
+ };
+ 
+ databaseControls.addFilterItem("No filter", -1);
+ for (auto i: dbConn.categories)
+ {
+  databaseControls.addFilterItem(i.second, i.first);
+ }
+ 
  addAndMakeVisible(dummyLabel);
  dummyLabel.setText("Yay!", juce::dontSendNotification);
  
- 
  addAndMakeVisible(databaseControls);
-  auto sampleList = databaseControls.listBox();
- sampleList->getHeader().addColumn("File Name", 1, 300);
- sampleList->getHeader().addColumn("Category", 2, 150);
- 
  addAndMakeVisible(resizerBar);
- 
  
  layout.setItemLayout(0, 100., -1., -0.5);
  layout.setItemLayout(1, 8, 8, 8);
@@ -41,6 +65,11 @@ MainComponent::~MainComponent()
 {
  // This shuts down the audio device and clears the audio source.
  shutdownAudio();
+}
+
+void MainComponent::repaintSampleList()
+{
+ databaseControls.listBox()->repaint();
 }
 
 //==============================================================================

@@ -4,6 +4,8 @@
               addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1">
   <MAINGROUP id="u9pUJF" name="SampleDatabase">
     <GROUP id="{FE77B5A6-BFA1-2B26-A900-38023B89B77A}" name="Source">
+      <FILE id="BG6nXD" name="SampleDatabaseClasses.h" compile="0" resource="0"
+            file="Source/SampleDatabaseClasses.h"/>
       <FILE id="aZw4Do" name="DatabaseTableModel.h" compile="0" resource="0"
             file="Source/DatabaseTableModel.h"/>
       <FILE id="Sbt8I6" name="DatabaseControls.cpp" compile="1" resource="0"
@@ -14,6 +16,10 @@
       <FILE id="LZbIyV" name="MainComponent.h" compile="0" resource="0" file="Source/MainComponent.h"/>
       <FILE id="GlP95Q" name="MainComponent.cpp" compile="1" resource="0"
             file="Source/MainComponent.cpp"/>
+    </GROUP>
+    <GROUP id="{9BA2509F-CAAA-6000-BB66-D139B2E9F668}" name="sqlite3">
+      <FILE id="opxtYZ" name="sqlite3.c" compile="1" resource="0" file="Source/sqlite3/sqlite3.c"/>
+      <FILE id="nzSH5k" name="sqlite3.h" compile="0" resource="0" file="Source/sqlite3/sqlite3.h"/>
     </GROUP>
     <GROUP id="{2DA23674-8805-B282-73AB-BD820FCD3F87}" name="XDDSP">
       <FILE id="WbXgHc" name="LICENSE" compile="0" resource="1" file="Source/XDDSP/LICENSE"/>
@@ -59,11 +65,6 @@
             file="Source/XDDSP/XDDSP_Waveshaper.h"/>
       <FILE id="NLZaQv" name="XDDSP_WindowFunctions.h" compile="0" resource="0"
             file="Source/XDDSP/XDDSP_WindowFunctions.h"/>
-    </GROUP>
-    <GROUP id="{24C7A186-7E15-C1C9-CF01-B7E15AA20D1E}" name="sqlite3">
-      <FILE id="InveEa" name="sqlite_orm.h" compile="0" resource="0" file="../../sqlite3/sqlite_orm.h"/>
-      <FILE id="q4u5zV" name="sqlite3.c" compile="1" resource="0" file="../../sqlite3/sqlite3.c"/>
-      <FILE id="FufTV8" name="sqlite3.h" compile="0" resource="0" file="../../sqlite3/sqlite3.h"/>
     </GROUP>
   </MAINGROUP>
   <MODULES>
