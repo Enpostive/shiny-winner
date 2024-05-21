@@ -73,7 +73,7 @@ DatabaseControls::DatabaseControls ()
  };
  searchbar->setTextToShowWhenEmpty("Search samples...", juce::Colours::white.withBrightness(0.5));
  searchbar->setSelectAllWhenFocused(true);
- 
+
  categoryFilter->onChange = [&]()
  {
   if (onFilterChange) onFilterChange(categoryFilter->getSelectedId());

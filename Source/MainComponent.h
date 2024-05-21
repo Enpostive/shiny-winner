@@ -45,5 +45,9 @@ private:
  
  juce::TimedCallback repaintTimer {[&](){ repaintSampleList(); }};
  
+ juce::AudioFormatManager audioFormatManager;
+ 
+ std::unique_ptr<juce::FileChooser> importFileChooser;
+ 
  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
 };

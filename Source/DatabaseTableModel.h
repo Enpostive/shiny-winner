@@ -89,19 +89,24 @@ class DatabaseTableModel : public juce::TableListBoxModel, public juce::Componen
  
  SampleDatabaseConnection &dbConn;
  SampleDatabaseAccessor dbAccess;
+ SampleDatabaseModifier dbMod;
  
- 
+ void triggerRedraw()
+ {
+  if (onRedrawRequired) onRedrawRequired();
+ }
  
  //======================== PUBLIC MEMBERS =====================================
 public:
  
  std::function<void (int rowNumber)> onRowSelected;
+ std::function<void ()> onRedrawRequired;
  
  DatabaseTableModel(SampleDatabaseConnection &_db) :
  dbConn(_db),
- dbAccess(_db)
- {
- }
+ dbAccess(_db),
+ dbMod(_db)
+ { }
  
  virtual ~DatabaseTableModel() override
  {
@@ -113,13 +118,16 @@ public:
   if (table)
   {
    table->removeComponentListener(this);
+   table->setModel(nullptr);
   }
   
   table = t;
 
   if (table)
   {
+   table->setModel(this);
    table->addComponentListener(this);
+   table->setMultipleSelectionEnabled(true);
    
    table->setColour(juce::ListBox::backgroundColourId, juce::Colours::black);
    
@@ -132,32 +140,35 @@ public:
   resizeCache();
  }
  
+ void refreshTable()
+ {
+  clearCache();
+  if (table) table->updateContent();
+  triggerRedraw();
+ }
+ 
  void setSearchTerm(const juce::String &term)
  {
   dbAccess.search(term);
-  clearCache();
-  if (table) table->updateContent();
+  refreshTable();
  }
  
  void resetSearch()
  {
   dbAccess.resetSearch();
-  clearCache();
-  if (table) table->updateContent();
+  refreshTable();
  }
  
  void setFilterCategory(int categoryid)
  {
   dbAccess.filterByCategory(categoryid);
-  clearCache();
-  if (table) table->updateContent();
+  refreshTable();
  }
  
  void clearFilterCategory()
  {
   dbAccess.resetCategoryFilter();
-  clearCache();
-  if (table) table->updateContent();
+  refreshTable();
  }
  
  void componentMovedOrResized(juce::Component &component, bool wasMoved, bool wasResized) override
@@ -169,8 +180,7 @@ public:
  {
   if (newSortColumnId == FilePathColumn) dbAccess.sortByPath(isForwards);
   else if (newSortColumnId == CategoryColumn) dbAccess.sortByCategory(isForwards);
-  clearCache();
-  if (table) table->updateContent();
+  refreshTable();
  }
  
  virtual int getNumRows() override
@@ -248,5 +258,78 @@ public:
   auto row = touchCache(rowNumber);
   
   
+  if (m.mods.isLeftButtonDown() && onRowSelected) onRowSelected(rowNumber);
+  
+  if (m.mods.isRightButtonDown())
+  {
+   juce::PopupMenu categoryMenu;
+   for (auto i: dbConn.categories)
+   {
+    categoryMenu.addItem(100 + i.first, i.second);
+   }
+   
+   juce::PopupMenu menu;
+   menu.addItem(1, "Remove");
+   menu.addSeparator();
+   menu.addSubMenu("Change Category", categoryMenu);
+   
+   menu.showMenuAsync(juce::PopupMenu::Options(), [&, this, rowNumber](int result)
+   {
+    dbAccess.selectRow(rowNumber);
+    if (result == 1)
+    {
+     deleteRows(table->getSelectedRows());
+    }
+    else if (result > 100)
+    {
+     int newCategory = result - 100;
+     changeCategoryOfRows(table->getSelectedRows(), newCategory);
+    }
+   });
+  }
+ }
+ 
+ std::vector<int> getRowIds(const juce::SparseSet<int> &rows)
+ {
+  std::vector<int> rowids;
+  int rowCount = rows.size();
+  rowids.reserve(rowCount);
+  for (int i = 0; i < rowCount; ++i)
+  {
+   dbAccess.selectRow(rows[i]);
+   rowids.push_back(dbAccess.getRowId());
+  }
+  
+  return rowids;
+ }
+ 
+ void deleteRows(const juce::SparseSet<int> &rows)
+ {
+  auto rowids = getRowIds(rows);
+  
+  for (int i: rowids)
+  {
+   dbMod.deleteRow(i);
+  }
+  refreshTable();
+ }
+ 
+ void changeCategoryOfRows(const juce::SparseSet<int> &rows, int newCategory)
+ {
+  auto rowids = getRowIds(rows);
+
+  for (int i: rowids)
+  {
+   dbMod.updateCategory(i, newCategory);
+  }
+  refreshTable();
+ }
+ 
+ void deleteKeyPressed(int lastRowSelected) override
+ {
+  if (table)
+  {
+   deleteRows(table->getSelectedRows());
+  }
  }
 };

@@ -6,13 +6,11 @@ resizerBar(&layout, 1, false),
 tableModel(dbConn)
 {
  tableModel.connectToTable(databaseControls.listBox());
- databaseControls.listBox()->setModel(&tableModel);
 
  databaseControls.onSearchStringChanged = [&](const juce::String &term)
  {
   if (term.isNotEmpty()) tableModel.setSearchTerm(term);
   else tableModel.resetSearch();
-  repaintTimer.startTimer(20);
  };
 
  databaseControls.onFilterChange = [&](int categoryIDSelected)
@@ -25,7 +23,6 @@ tableModel(dbConn)
   {
    tableModel.setFilterCategory(categoryIDSelected);
   }
-  repaintTimer.startTimer(20);
  };
  
  databaseControls.addFilterItem("No filter", -1);
@@ -33,6 +30,11 @@ tableModel(dbConn)
  {
   databaseControls.addFilterItem(i.second, i.first);
  }
+ 
+ tableModel.onRedrawRequired = [&]()
+ {
+  repaintTimer.startTimer(20);
+ };
  
  addAndMakeVisible(dummyLabel);
  dummyLabel.setText("Yay!", juce::dontSendNotification);
@@ -59,6 +61,26 @@ tableModel(dbConn)
   // Specify the number of input and output channels that we want to open
   setAudioChannels (2, 2);
  }
+ 
+ audioFormatManager.registerBasicFormats();
+ 
+ importFileChooser = std::make_unique<juce::FileChooser>("Import Files",
+                                                         juce::File(),
+                                                         audioFormatManager.getWildcardForAllFormats());
+ 
+ databaseControls.onImportClicked = [&]()
+ {
+  auto chooserFlags = (juce::FileBrowserComponent::openMode |
+                       juce::FileBrowserComponent::canSelectMultipleItems |
+                       juce::FileBrowserComponent::canSelectFiles |
+                       juce::FileBrowserComponent::canSelectDirectories);
+  
+  importFileChooser->launchAsync(chooserFlags, [&](const juce::FileChooser &chooser)
+  {
+   auto files = chooser.getResults();
+   
+  });
+ };
 }
 
 MainComponent::~MainComponent()

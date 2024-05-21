@@ -16,6 +16,9 @@
       <FILE id="LZbIyV" name="MainComponent.h" compile="0" resource="0" file="Source/MainComponent.h"/>
       <FILE id="GlP95Q" name="MainComponent.cpp" compile="1" resource="0"
             file="Source/MainComponent.cpp"/>
+      <FILE id="wuukrr" name="ImportDialog.cpp" compile="1" resource="0"
+            file="Source/ImportDialog.cpp"/>
+      <FILE id="eoL48t" name="ImportDialog.h" compile="0" resource="0" file="Source/ImportDialog.h"/>
     </GROUP>
     <GROUP id="{9BA2509F-CAAA-6000-BB66-D139B2E9F668}" name="sqlite3">
       <FILE id="opxtYZ" name="sqlite3.c" compile="1" resource="0" file="Source/sqlite3/sqlite3.c"/>
