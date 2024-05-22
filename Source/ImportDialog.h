@@ -33,7 +33,9 @@
     Describe your class and how it works here!
                                                                     //[/Comments]
 */
-class ImportDialog  : public juce::Component
+class ImportDialog  : public juce::Component,
+                      public juce::ComboBox::Listener,
+                      public juce::Button::Listener
 {
 public:
     //==============================================================================
@@ -42,10 +44,16 @@ public:
 
     //==============================================================================
     //[UserMethods]     -- You can add your own custom methods in this section.
+    juce::ComboBox& comboBox()
+    { return *juce__comboBox.get(); }
+
+    std::function<void ()> onImportClicked;
     //[/UserMethods]
 
     void paint (juce::Graphics& g) override;
     void resized() override;
+    void comboBoxChanged (juce::ComboBox* comboBoxThatHasChanged) override;
+    void buttonClicked (juce::Button* buttonThatWasClicked) override;
 
 
 
@@ -54,6 +62,8 @@ private:
     //[/UserVariables]
 
     //==============================================================================
+    std::unique_ptr<juce::ComboBox> juce__comboBox;
+    std::unique_ptr<juce::TextButton> importButton;
 
 
     //==============================================================================

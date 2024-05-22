@@ -26,10 +26,13 @@ tableModel(dbConn)
  };
  
  databaseControls.addFilterItem("No filter", -1);
+ importDialog.comboBox().addItem("No category", -1);
  for (auto i: dbConn.categories)
  {
   databaseControls.addFilterItem(i.second, i.first);
+  importDialog.comboBox().addItem(i.second, i.first);
  }
+ importDialog.comboBox().setSelectedId(-1);
  
  tableModel.onRedrawRequired = [&]()
  {
@@ -77,9 +80,52 @@ tableModel(dbConn)
   
   importFileChooser->launchAsync(chooserFlags, [&](const juce::FileChooser &chooser)
   {
-   auto files = chooser.getResults();
+   filesChosen = chooser.getResults();
    
+   juce::DialogWindow::LaunchOptions dialogLauncher;
+   dialogLauncher.content.setNonOwned(&importDialog);
+   dialogLauncher.resizable = false;
+   dialogLauncher.escapeKeyTriggersCloseButton = false;
+   dialogLauncher.dialogTitle = "Please choose a category...";
+   importDialogWindow = dialogLauncher.launchAsync();
   });
+ };
+ 
+ importDialog.onImportClicked = [&]()
+ {
+  importDialogWindow->exitModalState();
+  importDialogWindow = nullptr;
+  
+  int categoryid = importDialog.comboBox().getSelectedId();
+  if (categoryid == -1) categoryid = 0;
+  
+  SampleDatabaseModifier dbMod(dbConn);
+  
+  for (auto &f: filesChosen)
+  {
+   if (f.isDirectory())
+   {
+    auto fileTypes = juce::StringArray::fromTokens(audioFormatManager.getWildcardForAllFormats(),
+                                                   ";", "");
+    juce::Array<juce::File> contents;
+    for (auto &type: fileTypes)
+    {
+     contents.addArray(f.findChildFiles(juce::File::TypesOfFileToFind::findFilesAndDirectories |
+                                        juce::File::TypesOfFileToFind::ignoreHiddenFiles,
+                                        true,
+                                        type));
+    }
+    
+    for (auto &g: contents)
+    {
+     dbMod.insertRow(g.getFullPathName(), categoryid);
+    }
+   }
+   dbMod.insertRow(f.getFullPathName(), categoryid);
+  }
+  filesChosen.clear();
+  
+  tableModel.refreshTable();
  };
 }
 

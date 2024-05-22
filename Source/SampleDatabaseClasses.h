@@ -352,7 +352,7 @@ public:
  { return categoryId; }
  
  juce::String getCategory() const
- { return dbConn.categories.at(categoryId); }
+ { return categoryId == 0 ? "" : dbConn.categories.at(categoryId); }
  
  int getRowId() const
  { return rowid; }

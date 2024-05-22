@@ -227,9 +227,9 @@ public:
     break;
     
    case CategoryColumn:
-    g.drawText(dbConn.categories.at(row.category),
-               2, 0, width - 4, height,
-               juce::Justification::centredLeft, true);
+    if (row.category > 0) g.drawText(dbConn.categories.at(row.category),
+                                     2, 0, width - 4, height,
+                                     juce::Justification::centredLeft, true);
     break;
   }
   
@@ -330,6 +330,7 @@ public:
   if (table)
   {
    deleteRows(table->getSelectedRows());
+   table->deselectAllRows();
   }
  }
 };
