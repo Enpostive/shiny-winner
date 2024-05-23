@@ -47,6 +47,7 @@ class DatabaseTableModel : public juce::TableListBoxModel, public juce::Componen
  struct TableRowCacheLine
  {
   int rowNumber {-1};
+  int rowid;
   bool fileError {false};
   juce::File sampleFile;
   int category {0};
@@ -75,6 +76,7 @@ class DatabaseTableModel : public juce::TableListBoxModel, public juce::Componen
   if (rowCache[cacheLine].rowNumber != rowNumber)
   {
    dbAccess.selectRow(rowNumber);
+   rowCache[cacheLine].rowid = dbAccess.getRowId();
    rowCache[cacheLine].sampleFile = juce::File(dbAccess.getPath());
    rowCache[cacheLine].category = dbAccess.getCategoryID();
   }
@@ -99,7 +101,7 @@ class DatabaseTableModel : public juce::TableListBoxModel, public juce::Componen
  //======================== PUBLIC MEMBERS =====================================
 public:
  
- std::function<void (int rowNumber)> onRowSelected;
+ std::function<void (int)> onRowSelected;
  std::function<void ()> onRedrawRequired;
  
  DatabaseTableModel(SampleDatabaseConnection &_db) :
@@ -258,7 +260,7 @@ public:
   auto row = touchCache(rowNumber);
   
   
-  if (m.mods.isLeftButtonDown() && onRowSelected) onRowSelected(rowNumber);
+  if (m.mods.isLeftButtonDown() && onRowSelected) onRowSelected(row.rowid);
   
   if (m.mods.isRightButtonDown())
   {

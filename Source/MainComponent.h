@@ -4,6 +4,7 @@
 #include "DatabaseControls.h"
 #include "DatabaseTableModel.h"
 #include "ImportDialog.h"
+#include "ColouredScope.h"
 
 //==============================================================================
 /*
@@ -33,12 +34,16 @@ private:
  juce::StretchableLayoutManager layout;
  juce::StretchableLayoutResizerBar resizerBar;
  
- juce::Label dummyLabel;
+// juce::Label dummyLabel;
  
  SampleDatabaseConnection dbConn;
+ SampleDatabaseAccessor dbAccess;
  
  DatabaseControls databaseControls;
  DatabaseTableModel tableModel;
+ 
+ AudioFileScopeSource audioScopeSource;
+ ColouredScope scope;
  
  juce::TooltipWindow tooltipWindow;
  

@@ -3,6 +3,7 @@
 //==============================================================================
 MainComponent::MainComponent() :
 resizerBar(&layout, 1, false),
+dbAccess(dbConn),
 tableModel(dbConn)
 {
  tableModel.connectToTable(databaseControls.listBox());
@@ -39,8 +40,8 @@ tableModel(dbConn)
   repaintTimer.startTimer(20);
  };
  
- addAndMakeVisible(dummyLabel);
- dummyLabel.setText("Yay!", juce::dontSendNotification);
+// addAndMakeVisible(dummyLabel);
+// dummyLabel.setText("Yay!", juce::dontSendNotification);
  
  addAndMakeVisible(databaseControls);
  addAndMakeVisible(resizerBar);
@@ -121,11 +122,24 @@ tableModel(dbConn)
      dbMod.insertRow(g.getFullPathName(), categoryid);
     }
    }
-   dbMod.insertRow(f.getFullPathName(), categoryid);
+   else dbMod.insertRow(f.getFullPathName(), categoryid);
   }
   filesChosen.clear();
   
   tableModel.refreshTable();
+ };
+ 
+ addAndMakeVisible(scope);
+ scope.source = &audioScopeSource;
+ audioScopeSource.setOffsetAndWindowSize(0, 44100);
+ audioScopeSource.setCrossovers(600., 4000.);
+ scope.reverse = false;
+ tableModel.onRowSelected = [&](int rowid)
+ {
+  dbAccess.selectRowId(rowid);
+  audioScopeSource.openFile(dbAccess.getPath(), true);
+  scope.update();
+  scope.repaint();
  };
 }
 
@@ -182,6 +196,6 @@ void MainComponent::paint (juce::Graphics& g)
 
 void MainComponent::resized()
 {
- juce::Component* comps[] = {&dummyLabel, &resizerBar, &databaseControls};
+ juce::Component* comps[] = {&scope, &resizerBar, &databaseControls};
  layout.layOutComponents(comps, 3, 0, 0, getWidth(), getHeight(), true, true);
 }
