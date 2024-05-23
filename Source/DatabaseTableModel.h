@@ -253,14 +253,17 @@ public:
   return existingComponent;
  }
  
+ void selectedRowsChanged(int lastRowSelected) override
+ {
+  auto row = touchCache(lastRowSelected);
+  if (onRowSelected) onRowSelected(row.rowid);
+ }
+ 
  virtual void cellClicked(int rowNumber,
                           int columnId,
                           const juce::MouseEvent &m) override
  {
   auto row = touchCache(rowNumber);
-  
-  
-  if (m.mods.isLeftButtonDown() && onRowSelected) onRowSelected(row.rowid);
   
   if (m.mods.isRightButtonDown())
   {

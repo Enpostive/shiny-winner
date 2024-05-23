@@ -134,12 +134,29 @@ tableModel(dbConn)
  audioScopeSource.setOffsetAndWindowSize(0, 44100);
  audioScopeSource.setCrossovers(600., 4000.);
  scope.reverse = false;
+ scope.centreEnable = true;
+ scope.centreLineColour = juce::Colours::white.withBrightness(0.5).withAlpha(0.5f);
+ scope.guideEnable = true;
+ scope.minimumThickness = 0.5;
+ scope.strokeEnable = true;
+ scope.setVerticalScale(0.3);
  tableModel.onRowSelected = [&](int rowid)
  {
   dbAccess.selectRowId(rowid);
-  audioScopeSource.openFile(dbAccess.getPath(), true);
-  scope.update();
-  scope.repaint();
+  
+  juce::File audioFile(dbAccess.getPath());
+  if (audioFile.hasReadAccess())
+  {
+   audioReader.reset(audioFormatManager.createReaderFor(audioFile));
+   audioScopeSource.attachReader(audioReader.get(), true);
+   scope.update();
+   scope.repaint();
+  }
+  else
+  {
+   juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon,
+                                          "Oops!", "Can't load that file!");
+  }
  };
 }
 

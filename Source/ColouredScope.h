@@ -151,8 +151,7 @@ class AudioFileScopeSource : public ScopeDataSource
  static constexpr unsigned long ProcessingLeadIn = 100;
  static constexpr int NumberBufferChannels = 5;
  
- juce::AudioFormatManager audioFormatManager;
- std::unique_ptr<juce::AudioFormatReader> reader;
+ juce::AudioFormatReader *reader {nullptr};
  juce::AudioBuffer<float> buffer;
  juce::AudioBuffer<float> leadIn;
  
@@ -244,30 +243,22 @@ public:
  lowLPCoeff(dspParam),
  highLPCoeff(dspParam)
  {
-  audioFormatManager.registerBasicFormats();
   leadIn.setSize(1, ProcessingLeadIn);
  }
  
  virtual ~AudioFileScopeSource() {}
  
- bool openFile(juce::String filename, bool resetWindowSize = false)
+ void attachReader(juce::AudioFormatReader *r, bool resetWindowSize = false)
  {
-  juce::File fileToAnalyse(filename);
-  if (!fileToAnalyse.exists()) return false;
-  
-  reader.reset(audioFormatManager.createReaderFor(fileToAnalyse));
-  if (!reader) return false;
-  
-  dspParam.setSampleRate(reader->sampleRate);
-  if (resetWindowSize) windowSize = static_cast<int>(getFileLength());
-  update(offset, windowSize, true);
-  
-  return true;
- }
- 
- void closeFile()
- {
-  reader.reset();
+  reader = r;
+
+  if (reader)
+  {
+   dspParam.setSampleRate(reader->sampleRate);
+   update(offset,
+          resetWindowSize ? static_cast<int>(getFileLength()) : windowSize,
+          true);
+  }
  }
  
  void setGain(float linearGain)
@@ -278,6 +269,7 @@ public:
  
  long getFileLength()
  {
+  if (!reader) return 0;
   return reader->lengthInSamples;
  }
  
@@ -378,6 +370,7 @@ public:
  bool fillEnable {true};
  bool centreEnable {false};
  bool guideEnable {false};
+ float minimumThickness {1.};
  
  juce::Image backgroundImage;
  std::function<void (int, int)> resizeBackgroundImage;
@@ -469,8 +462,16 @@ public:
     else lSample = static_cast<unsigned int>(static_cast<float>(sIndex + 1)*spp);
     auto scopePoint = source->getRange(fSample, lSample);
 
-    minimums[i] = scopePoint.min;
-    const float xCoord = midPoint - scale*scopePoint.max;
+    minimums[i] = midPoint - scale*scopePoint.min;
+    float xCoord = midPoint - scale*scopePoint.max;
+    const float graphThickness = fabs(xCoord - minimums[i]);
+    if (graphThickness < minimumThickness)
+    {
+     const float girthAdded = minimumThickness - graphThickness;
+     minimums[i] -= 0.5*girthAdded;
+     xCoord += 0.5*girthAdded;
+    }
+    
     colourBuffer.setPixelAt(i, 0, scopePoint.colour);
     if (i == gStart)
     {
@@ -486,7 +487,7 @@ public:
    
    for (int i = gEnd; i >= gStart; --i)
    {
-    waveformShape.lineTo(static_cast<float>(i), midPoint - scale*minimums[i]);
+    waveformShape.lineTo(static_cast<float>(i), minimums[i]);
    }
    
    waveformShape.closeSubPath();
@@ -501,7 +502,7 @@ public:
 //   g.addTransform(juce::AffineTransform::scale(1./lastDetectedScaleFactor));
    g.setTiledImageFill(colourBuffer, 0, 0, 1.0f);
    if (fillEnable) g.fillPath(waveformShape);
-   if (strokeEnable) g.strokePath(waveformShape, juce::PathStrokeType(lastDetectedScaleFactor));
+   if (strokeEnable) g.strokePath(waveformShape, juce::PathStrokeType(1));
    
    if (scroll)
    {
@@ -534,7 +535,7 @@ public:
   if (centreEnable)
   {
    g.setColour(centreLineColour);
-   float y = 0.5*getHeight();
+   float y = verticalMidPoint*getHeight();
    g.drawLine(0., y, 1.*getWidth(), y);
   }
   

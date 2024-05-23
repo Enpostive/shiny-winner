@@ -52,6 +52,7 @@ private:
  juce::TimedCallback repaintTimer {[&](){ repaintSampleList(); }};
  
  juce::AudioFormatManager audioFormatManager;
+ std::unique_ptr<juce::AudioFormatReader> audioReader;
  
  std::unique_ptr<juce::FileChooser> importFileChooser;
  ImportDialog importDialog;

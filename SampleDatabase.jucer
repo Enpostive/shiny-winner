@@ -4,6 +4,8 @@
               addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1">
   <MAINGROUP id="u9pUJF" name="SampleDatabase">
     <GROUP id="{FE77B5A6-BFA1-2B26-A900-38023B89B77A}" name="Source">
+      <FILE id="FSbIPh" name="SampleEnvelopeAnalyser.h" compile="0" resource="0"
+            file="Source/SampleEnvelopeAnalyser.h"/>
       <FILE id="BG6nXD" name="SampleDatabaseClasses.h" compile="0" resource="0"
             file="Source/SampleDatabaseClasses.h"/>
       <FILE id="aZw4Do" name="DatabaseTableModel.h" compile="0" resource="0"
