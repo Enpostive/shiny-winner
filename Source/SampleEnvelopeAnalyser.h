@@ -12,6 +12,7 @@
 
 #include <JuceHeader.h>
 #include "XDDSP/XDDSP.h"
+#include "AudioReaderCache.h"
 
 class WaveformEnvelopeAnalyser;
 
@@ -142,24 +143,7 @@ public:
 class WaveformEnvelopeAnalyser
 {
 private:
- juce::AudioFormatReader &reader;
- juce::AudioBuffer<float> readCache;
- static constexpr XDDSP::PowerSize ReadCacheSize {9};
- int cachedSection {-1};
- 
- float rsc(int channel, int pos)
- {
-  int i = pos & ReadCacheSize.mask();
-  int sec = pos - i;
-  if (sec != cachedSection)
-  {
-   readCache.setSize(reader.numChannels, ReadCacheSize.size());
-   if (!reader.read(&readCache, 0, ReadCacheSize.size(), sec, true, true)) return 0.;
-   cachedSection = sec;
-  }
-  
-  return readCache.getSample(channel, i);
- }
+ AudioReaderCache reader;
 
  const float sampleRate;
  float clumpingFrequency {100.};
@@ -192,22 +176,22 @@ public:
   if (refine > 0)
   {
    int i = 0;
-   while (i < count && rsc(channel, i) == 0.) ++i;
+   while (i < count && reader.read(channel, i) == 0.) ++i;
 
    // If the sample is empty then a zero envelope will suffice;
    if (i == count) return env;
    
    while (i < count)
    {
-    float sign = XDDSP::signum(rsc(channel, i));
-    WaveformEnvelope::Maxima maxima = {i, fabs(rsc(channel, i))};
+    float sign = XDDSP::signum(reader.read(channel, i));
+    WaveformEnvelope::Maxima maxima = {i, fabs(reader.read(channel, i))};
     while ((++i < count) &&
-           (XDDSP::signum(rsc(channel, i)) == sign))
+           (XDDSP::signum(reader.read(channel, i)) == sign))
     {
-     if (fabs(rsc(channel, i)) > maxima.amplitude)
+     if (fabs(reader.read(channel, i)) > maxima.amplitude)
      {
       maxima.time = i;
-      maxima.amplitude = fabs(rsc(channel, i));
+      maxima.amplitude = fabs(reader.read(channel, i));
      }
     }
     env->insertMaxima(maxima);
@@ -277,7 +261,7 @@ public:
    int i = 0;
    while (i < count)
    {
-    if (fabs(rsc(channel, i)) > env->amplitudeAtSample(i))
+    if (fabs(reader.read(channel, i)) > env->amplitudeAtSample(i))
     {
      validated = false;
      // Identify which segment we have landed on and set up loop points
@@ -286,7 +270,7 @@ public:
      if (maximaIndex == 0 ||
          maximaIndex == env->maxima.size())
      {
-      env->insertMaxima({i, fabs(rsc(channel, i))});
+      env->insertMaxima({i, reader.read(channel, i)});
      }
      else
      {
@@ -300,7 +284,7 @@ public:
       int end = env->maxima[maximaIndex].time;
       for (int j = i; j < end; ++j)
       {
-       WaveformEnvelope::Maxima p {j, fabs(rsc(channel, j))};
+       WaveformEnvelope::Maxima p {j, fabs(reader.read(channel, j))};
        float dTime = p.time - mm1.time;
        float dAmp = p.amplitude - mm1.amplitude;
        float peakAngle = atan(dAmp/dTime);

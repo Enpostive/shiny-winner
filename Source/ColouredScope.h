@@ -33,6 +33,13 @@ protected:
    bass *= head;
    mids *= head;
    high *= head;
+   
+   if (std::isinf(bass))
+   {
+    bass = defaultColour.getRed();
+    mids = defaultColour.getGreen();
+    high = defaultColour.getBlue();
+   }
   }
   else
   {

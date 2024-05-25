@@ -6,6 +6,7 @@
 #include "ImportDialog.h"
 #include "ColouredScope.h"
 #include "SampleEnvelopeAnalyser.h"
+#include "RMSAnalyser.h"
 
 //==============================================================================
 /*
@@ -30,7 +31,8 @@ public:
  
 private:
 //==============================================================================
-// Your private member variables go here...
+ XDDSP::Parameters param;
+ RMSAnalyser rmsAnalyser;
  
  juce::StretchableLayoutManager layout;
  juce::StretchableLayoutResizerBar resizerBar;
@@ -49,6 +51,9 @@ private:
  AnalysisWaveformSource envScopeSource;
  ColouredScope audioScope;
  ColouredScope envScope;
+ float measuredRMS;
+ float measuredKRMS;
+ 
  int refineParameter {0};
  float clumpingFrequency {200.};
  float deleteThreshold {0.1};
@@ -68,7 +73,7 @@ private:
  juce::DialogWindow *importDialogWindow {nullptr};
  juce::Array<juce::File> filesChosen;
  
- void refreshEnvelope();
+ void updateAnalysis();
  
  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
 };

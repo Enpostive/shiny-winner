@@ -2,6 +2,7 @@
 
 //==============================================================================
 MainComponent::MainComponent() :
+rmsAnalyser(param),
 resizerBar(&layout, 1, false),
 dbAccess(dbConn),
 tableModel(dbConn)
@@ -163,7 +164,7 @@ tableModel(dbConn)
    audioScopeSource.attachReader(audioReader.get(), 0, true);
    audioScope.update();
 
-   refreshEnvelope();
+   updateAnalysis();
   }
   else
   {
@@ -177,19 +178,19 @@ tableModel(dbConn)
  databaseControls.onRefineChange = [&](int refineParam)
  {
   refineParameter = refineParam;
-  refreshEnvelope();
+  updateAnalysis();
  };
  
  databaseControls.onClumpingChange = [&](int clumpingParam)
  {
   clumpingFrequency = clumpingParam;
-  refreshEnvelope();
+  updateAnalysis();
  };
  
  databaseControls.onDeleteThreshChange = [&](float deleteParam)
  {
   deleteThreshold = deleteParam;
-  refreshEnvelope();
+  updateAnalysis();
  };
  
  databaseControls.setClumpingParameter(200.);
@@ -213,16 +214,24 @@ void MainComponent::updateAnalysisText()
   float length = 1000.0*(static_cast<float>(audioReader->lengthInSamples) /
                          audioReader->sampleRate);
   text += "Sample Length: " + juce::String(length, 3) + "ms\n";
+  text += "RMS: " + juce::String(XDDSP::linear2dB(measuredRMS), 3) + "dB\n";
+  text += "K-RMS: " + juce::String(XDDSP::linear2dB(measuredKRMS), 3) + "dB\n";
  }
- text += "Maxima count: " + juce::String(waveformEnvelope->maxima.size()) + "\n";
+ 
+ if (waveformEnvelope)
+ {
+  text += "Maxima count: " + juce::String(waveformEnvelope->maxima.size()) + "\n";
+ }
  
  analysisDisplay.setText(text, juce::dontSendNotification);
 }
 
-void MainComponent::refreshEnvelope()
+void MainComponent::updateAnalysis()
 {
  if (audioReader)
  {
+  param.setSampleRate(audioReader->sampleRate);
+  
   WaveformEnvelopeAnalyser analyser(*audioReader);
   analyser.setClumpingFrequency(clumpingFrequency);
   waveformEnvelope.reset(analyser.generateEnvelope(0, refineParameter, deleteThreshold));
@@ -232,6 +241,9 @@ void MainComponent::refreshEnvelope()
   envScope.repaint();
   
   audioScope.repaint();
+  
+  measuredRMS = rmsAnalyser.calculateRMS(*audioReader, 0);
+  measuredKRMS = rmsAnalyser.calculateKWeightedRMS(*audioReader, 0);
   
   updateAnalysisText();
  }
