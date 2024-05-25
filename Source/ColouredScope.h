@@ -13,6 +13,7 @@
 #include <JuceHeader.h>
 #include <utility>
 #include "XDDSP/XDDSP.h"
+#include "SampleEnvelopeAnalyser.h"
 
 //==============================================================================
 /*
@@ -152,6 +153,7 @@ class AudioFileScopeSource : public ScopeDataSource
  static constexpr int NumberBufferChannels = 5;
  
  juce::AudioFormatReader *reader {nullptr};
+ int channelSelected {0};
  juce::AudioBuffer<float> buffer;
  juce::AudioBuffer<float> leadIn;
  
@@ -211,13 +213,13 @@ class AudioFileScopeSource : public ScopeDataSource
    lowLP.reset();
    highLP.reset();
    reader->read(&leadIn, 0, ProcessingLeadIn, newOffset - ProcessingLeadIn, true, true);
-   for (int i = 0; i < ProcessingLeadIn; ++i) procFilters(leadIn.getSample(0, i));
+   for (int i = 0; i < ProcessingLeadIn; ++i) procFilters(leadIn.getSample(channelSelected, i));
    
    //    reader->read(&buffer, 0, fillBeginningAmount, newOffset, true, true);
    readIntoBuffer(0, newOffset, newWindowSize);
    for (int i = 0; i < newWindowSize; ++i)
    {
-    procFilters(0.5*(buffer.getSample(0, i) + buffer.getSample(1, i)));
+    procFilters(buffer.getSample(channelSelected, i));
     buffer.setSample(1, i, bassSample);
     buffer.setSample(2, i, midsSample);
     buffer.setSample(3, i, highSample);
@@ -248,9 +250,10 @@ public:
  
  virtual ~AudioFileScopeSource() {}
  
- void attachReader(juce::AudioFormatReader *r, bool resetWindowSize = false)
+ void attachReader(juce::AudioFormatReader *r, int channel = 0, bool resetWindowSize = false)
  {
   reader = r;
+  channelSelected = channel;
 
   if (reader)
   {
@@ -291,7 +294,7 @@ public:
  virtual ScopePoint getRange(int start, int end) override
  {
   prepareIndexes(start, end);
-  float t = gain*0.5*(buffer.getSample(0, start) + buffer.getSample(1, start));
+  float t = gain*(buffer.getSample(channelSelected, start));
   ScopePoint result = {t, t, defaultColour};
 
   float mb = fabs(buffer.getSample(1, start));
@@ -300,7 +303,7 @@ public:
 
   for (int i = start + 1; i < end; ++i)
   {
-   float t = gain*0.5*(buffer.getSample(0, i) + buffer.getSample(1, i));
+   float t = gain*(buffer.getSample(channelSelected, i));
    result.min = std::min(result.min, t);
    result.max = std::max(result.max, t);
    mb = std::max(mb, fabs(buffer.getSample(1, i)));
@@ -317,6 +320,77 @@ public:
  { return windowSize; }
 };
 
+
+
+
+
+
+
+
+
+
+class AnalysisWaveformSource : public ScopeDataSource
+{
+ unsigned int windowSize;
+
+ void constrain(int &index)
+ {
+  index = XDDSP::boundary<int>(index, 0, windowSize - 1);
+ }
+ 
+ void prepareIndexes(int &start, int &end)
+ {
+  constrain(start);
+  constrain(end);
+  if (end < start) std::swap(start, end);
+ }
+
+public:
+ WaveformEnvelope *env {nullptr};
+ AudioFileScopeSource *comparison {nullptr};
+ 
+ virtual ScopePoint getRange(int start, int end) override
+ {
+  ScopePoint point;
+  point.min = 0.;
+  point.max = 0.;
+  point.colour = juce::Colours::grey;//.withAlpha(0.3f);
+  
+  if (env)
+  {
+   prepareIndexes(start, end);
+   float e = env->amplitudeAtSample(start);
+
+   for (int i = start + 1; i < end; ++i)
+   {
+    e = std::max(e, env->amplitudeAtSample(i));
+   }
+
+   point.min = -e;
+   point.max = e;
+   
+   if (comparison)
+   {
+    ScopePoint cmp = comparison->getRange(start, end);
+    if (cmp.max > point.max ||
+        cmp.min < point.min)
+    {
+     point.colour = juce::Colours::red;
+    }
+   }
+  }
+  
+  return point;
+ }
+ 
+ void setWindowSize(unsigned int newSize)
+ {
+  windowSize = newSize;
+ }
+ 
+ virtual unsigned int getRangeSize() override
+ { return windowSize; }
+};
 
 
 
@@ -370,6 +444,7 @@ public:
  bool fillEnable {true};
  bool centreEnable {false};
  bool guideEnable {false};
+ bool drawBackground {true};
  float minimumThickness {1.};
  
  juce::Image backgroundImage;
@@ -528,7 +603,7 @@ public:
   {
    g.drawImage(backgroundImage, getLocalBounds().toFloat(), juce::RectanglePlacement::stretchToFit);
   }
-  else g.fillAll (backgroundColour);   // clear the background
+  else if (drawBackground) g.fillAll (backgroundColour);   // clear the background
   
   g.drawImage(currBuff(), getLocalBounds().toFloat(),  juce::RectanglePlacement::stretchToFit);
 
@@ -553,7 +628,7 @@ public:
  void resized() override
  {
   resizeBuffers();
-//  update();
+  update();
  }
  
 private:

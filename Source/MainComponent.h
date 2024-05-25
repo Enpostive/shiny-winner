@@ -5,6 +5,7 @@
 #include "DatabaseTableModel.h"
 #include "ImportDialog.h"
 #include "ColouredScope.h"
+#include "SampleEnvelopeAnalyser.h"
 
 //==============================================================================
 /*
@@ -41,12 +42,20 @@ private:
  
  DatabaseControls databaseControls;
  DatabaseTableModel tableModel;
+ juce::Label analysisDisplay;
  
+ std::unique_ptr<WaveformEnvelope> waveformEnvelope;
  AudioFileScopeSource audioScopeSource;
- ColouredScope scope;
+ AnalysisWaveformSource envScopeSource;
+ ColouredScope audioScope;
+ ColouredScope envScope;
+ int refineParameter {0};
+ float clumpingFrequency {200.};
+ float deleteThreshold {0.1};
  
  juce::TooltipWindow tooltipWindow;
  
+ void updateAnalysisText();
  void repaintSampleList();
  
  juce::TimedCallback repaintTimer {[&](){ repaintSampleList(); }};
@@ -58,6 +67,8 @@ private:
  ImportDialog importDialog;
  juce::DialogWindow *importDialogWindow {nullptr};
  juce::Array<juce::File> filesChosen;
+ 
+ void refreshEnvelope();
  
  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
 };

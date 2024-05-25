@@ -48,7 +48,7 @@ tableModel(dbConn)
  
  layout.setItemLayout(0, 100., -1., -0.5);
  layout.setItemLayout(1, 8, 8, 8);
- layout.setItemLayout(2, 100., -1., -0.5);
+ layout.setItemLayout(2, 280., -1., -0.5);
  
 
  setSize (800, 600);
@@ -129,17 +129,28 @@ tableModel(dbConn)
   tableModel.refreshTable();
  };
  
- addAndMakeVisible(scope);
- scope.source = &audioScopeSource;
+ addAndMakeVisible(envScope);
+ envScope.source = &envScopeSource;
+ envScope.reverse = false;
+ envScope.fillEnable = false;
+ envScope.strokeEnable = true;
+ envScope.setVerticalScale(0.3);
+ 
+ addAndMakeVisible(audioScope);
+ audioScope.source = &audioScopeSource;
  audioScopeSource.setOffsetAndWindowSize(0, 44100);
  audioScopeSource.setCrossovers(600., 4000.);
- scope.reverse = false;
- scope.centreEnable = true;
- scope.centreLineColour = juce::Colours::white.withBrightness(0.5).withAlpha(0.5f);
- scope.guideEnable = true;
- scope.minimumThickness = 0.5;
- scope.strokeEnable = true;
- scope.setVerticalScale(0.3);
+ audioScope.reverse = false;
+ audioScope.centreEnable = true;
+ audioScope.centreLineColour = juce::Colours::white.withBrightness(0.5).withAlpha(0.5f);
+ audioScope.guideEnable = true;
+ audioScope.minimumThickness = 0.5;
+ audioScope.strokeEnable = true;
+ audioScope.setVerticalScale(0.3);
+ audioScope.drawBackground = false;
+ 
+ envScopeSource.comparison = &audioScopeSource;
+ 
  tableModel.onRowSelected = [&](int rowid)
  {
   dbAccess.selectRowId(rowid);
@@ -148,22 +159,82 @@ tableModel(dbConn)
   if (audioFile.hasReadAccess())
   {
    audioReader.reset(audioFormatManager.createReaderFor(audioFile));
-   audioScopeSource.attachReader(audioReader.get(), true);
-   scope.update();
-   scope.repaint();
+   
+   audioScopeSource.attachReader(audioReader.get(), 0, true);
+   audioScope.update();
+
+   refreshEnvelope();
   }
   else
   {
    juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon,
                                           "Oops!", "Can't load that file!");
   }
+  
+  addAndMakeVisible(analysisDisplay);
  };
+ 
+ databaseControls.onRefineChange = [&](int refineParam)
+ {
+  refineParameter = refineParam;
+  refreshEnvelope();
+ };
+ 
+ databaseControls.onClumpingChange = [&](int clumpingParam)
+ {
+  clumpingFrequency = clumpingParam;
+  refreshEnvelope();
+ };
+ 
+ databaseControls.onDeleteThreshChange = [&](float deleteParam)
+ {
+  deleteThreshold = deleteParam;
+  refreshEnvelope();
+ };
+ 
+ databaseControls.setClumpingParameter(200.);
+ databaseControls.setDeleteThresholdParamter(0.05);
+ databaseControls.setRefineParameter(10);
+ analysisDisplay.setJustificationType(juce::Justification::topLeft);
 }
 
 MainComponent::~MainComponent()
 {
  // This shuts down the audio device and clears the audio source.
  shutdownAudio();
+}
+
+void MainComponent::updateAnalysisText()
+{
+ juce::String text;
+ 
+ if (audioReader)
+ {
+  float length = 1000.0*(static_cast<float>(audioReader->lengthInSamples) /
+                         audioReader->sampleRate);
+  text += "Sample Length: " + juce::String(length, 3) + "ms\n";
+ }
+ text += "Maxima count: " + juce::String(waveformEnvelope->maxima.size()) + "\n";
+ 
+ analysisDisplay.setText(text, juce::dontSendNotification);
+}
+
+void MainComponent::refreshEnvelope()
+{
+ if (audioReader)
+ {
+  WaveformEnvelopeAnalyser analyser(*audioReader);
+  analyser.setClumpingFrequency(clumpingFrequency);
+  waveformEnvelope.reset(analyser.generateEnvelope(0, refineParameter, deleteThreshold));
+  envScopeSource.env = waveformEnvelope.get();
+  envScopeSource.setWindowSize(static_cast<int>(audioReader->lengthInSamples));
+  envScope.update();
+  envScope.repaint();
+  
+  audioScope.repaint();
+  
+  updateAnalysisText();
+ }
 }
 
 void MainComponent::repaintSampleList()
@@ -213,6 +284,10 @@ void MainComponent::paint (juce::Graphics& g)
 
 void MainComponent::resized()
 {
- juce::Component* comps[] = {&scope, &resizerBar, &databaseControls};
+ juce::Component* comps[] = {&envScope, &resizerBar, &databaseControls};
  layout.layOutComponents(comps, 3, 0, 0, getWidth(), getHeight(), true, true);
+ audioScope.setBounds(envScope.getBounds());
+ analysisDisplay.setBounds(envScope.getBounds().
+                           withHeight(envScope.getHeight()/2).
+                           withLeft(3*getWidth()/4));
 }
