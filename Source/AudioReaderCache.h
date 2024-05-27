@@ -22,18 +22,22 @@ class AudioReaderCache
  
  double _sr;
  juce::int64 _len;
+ int _chCount;
  
 public:
  const double &sampleRate;
  const juce::int64 &lengthInSamples;
+ const int &numChannels;
  
  AudioReaderCache(juce::AudioFormatReader &_reader) :
  reader(_reader),
  sampleRate(_sr),
- lengthInSamples(_len)
+ lengthInSamples(_len),
+ numChannels(_chCount)
  {
   _sr = _reader.sampleRate;
   _len = _reader.lengthInSamples;
+  _chCount = _reader.numChannels;
  }
  
  float read(int channel, int pos)

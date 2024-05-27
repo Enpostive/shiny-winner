@@ -55,14 +55,21 @@ public:
  
  WaveformEnvelope() {}
  
- WaveformEnvelope(juce::String stringRep)
+ WaveformEnvelope(const juce::String &stringRep)
  {
   // Throws an exception if an error is detected
   
   juce::StringArray tokens = juce::StringArray::fromTokens(stringRep, false);
-  if (tokens.size() %2 != 0) throw std::runtime_error("Envelope decode expects even number of tokens");
+  if (tokens.size() == 0) throw std::runtime_error("String does not contain any tokens");
   
-  for (int i = 0; i < tokens.size(); i += 2)
+  int maximaCount = tokens[0].getIntValue();
+  
+  if (tokens.size() != (maximaCount*2 + 1))
+  {
+   throw std::runtime_error("Token count does not match up with maxima count");
+  }
+  
+  for (int i = 1; i < tokens.size(); i += 2)
   {
    Maxima m;
    m.time = tokens[i].getIntValue();
@@ -119,12 +126,13 @@ public:
   juce::String stringRep;
   
   // The envelope will be represented as a list of numbers.
-  // time amplitude time amplitude time amplitude...
+  // size time amplitude time amplitude time amplitude...
+  
+  stringRep += juce::String(maxima.size());
   
   for (auto &i : maxima)
   {
-   if (stringRep.isNotEmpty()) stringRep += " ";
-   stringRep += juce::String(i.time) + " " + juce::String(i.amplitude, 10);
+   stringRep += " " + juce::String(i.time) + " " + juce::String(i.amplitude, 10);
   }
   
   return stringRep;
@@ -148,6 +156,9 @@ private:
  const float sampleRate;
  float clumpingFrequency {100.};
  
+ int refine = 12;
+ float removeMaximaBelow = 0.05;
+ 
  int clumpingDistance()
  { return sampleRate/clumpingFrequency; }
 
@@ -163,7 +174,13 @@ public:
  void setClumpingFrequency(float cf)
  { if (cf > 0.) clumpingFrequency = cf; }
  
- WaveformEnvelope* generateEnvelope(int channel, int refine = 0, double removeMaximaBelow = 0.)
+ void setRefine(int r)
+ { if (r > 0) refine = r; }
+ 
+ void setRemoveThreshold(float rt)
+ { if (rt > 0) removeMaximaBelow = rt; }
+ 
+ WaveformEnvelope* generateEnvelope(int channel)
  {
   WaveformEnvelope *env = new WaveformEnvelope();
   env->sampleRate = sampleRate;
@@ -175,6 +192,7 @@ public:
   // Record maxima between zero-crossings
   if (refine > 0)
   {
+   --refine;
    int i = 0;
    while (i < count && reader.read(channel, i) == 0.) ++i;
 
@@ -206,7 +224,7 @@ public:
    --refine;
    int i = static_cast<int>(env->wMaxima.size() - 1);
    auto b = env->wMaxima.begin();
-   while (--i > 1)
+   while (--i > 0)
    {
     float tAmp = env->wMaxima[i].amplitude;
     int t = env->wMaxima[i].time;
@@ -235,8 +253,9 @@ public:
   }
   // ===========================================================
   // Delete any maxima which amplitude is less than a percentage of the absolute maximum
-  if (env->wMaxima.size() > 0)
+  if (refine > 0)
   {
+   --refine;
    float absoluteMax = env->wMaxima.front().amplitude;
    for (int i = 1; i < env->wMaxima.size(); ++i)
    {
@@ -247,7 +266,10 @@ public:
    auto b = env->wMaxima.begin();
    while (--i > 1) // Don't check the first point either
    {
-    if (env->wMaxima[i].amplitude < threshold) env->wMaxima.erase(b + i);
+    if (env->wMaxima[i].amplitude < threshold)
+    {
+     env->wMaxima.erase(b + i);
+    }
    }
   }
   // ===========================================================

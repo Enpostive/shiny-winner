@@ -17,7 +17,7 @@ class MainComponent  : public juce::AudioAppComponent
 {
 public:
 //==============================================================================
- MainComponent();
+ MainComponent(juce::PropertiesFile::Options &appOptions);
  ~MainComponent() override;
  
 //==============================================================================
@@ -31,6 +31,9 @@ public:
  
 private:
 //==============================================================================
+ juce::ApplicationProperties appProperties;
+ juce::Component::SafePointer<juce::DialogWindow> settingsDialog;
+ 
  XDDSP::Parameters param;
  RMSAnalyser rmsAnalyser;
  
@@ -46,13 +49,14 @@ private:
  DatabaseTableModel tableModel;
  juce::Label analysisDisplay;
  
- std::unique_ptr<WaveformEnvelope> waveformEnvelope;
- AudioFileScopeSource audioScopeSource;
- AnalysisWaveformSource envScopeSource;
- ColouredScope audioScope;
- ColouredScope envScope;
+ std::array<std::unique_ptr<WaveformEnvelope>, 2> waveformEnvelope;
+ std::array<AudioFileScopeSource, 2> audioScopeSource;
+ std::array<AnalysisWaveformSource, 2> envScopeSource;
+ std::array<ColouredScope, 2> audioScope;
+ std::array<ColouredScope, 2> envScope;
  float measuredRMS;
  float measuredKRMS;
+ std::map<int, int> histogram;
  
  int refineParameter {0};
  float clumpingFrequency {200.};
@@ -73,7 +77,11 @@ private:
  juce::DialogWindow *importDialogWindow {nullptr};
  juce::Array<juce::File> filesChosen;
  
- void updateAnalysis();
+ void updateAnalysisForChannel(WaveformEnvelopeAnalyser &analyser, int channel);
+ void updateAnalysis(juce::AudioFormatReader &reader);
+ 
+ std::unique_ptr<juce::AudioFormatReaderSource> readerSource;
+ juce::AudioTransportSource transportSource;
  
  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
 };

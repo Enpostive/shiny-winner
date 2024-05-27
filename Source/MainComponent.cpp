@@ -1,13 +1,35 @@
 #include "MainComponent.h"
 
 //==============================================================================
-MainComponent::MainComponent() :
+MainComponent::MainComponent(juce::PropertiesFile::Options &appOptions) :
 rmsAnalyser(param),
-resizerBar(&layout, 1, false),
+resizerBar(&layout, 2, false),
 dbAccess(dbConn),
 tableModel(dbConn)
 {
+ appProperties.setStorageParameters(appOptions);
+ auto props = appProperties.getUserSettings();
+ auto audioState = props->getXmlValue("audio");
+ 
  tableModel.connectToTable(databaseControls.listBox());
+ 
+ databaseControls.onPreviewClicked = [&]()
+ {
+  if (audioReader)
+  {
+   transportSource.setPosition(0.);
+   float ref = databaseControls.getReferenceLevel();
+   if (databaseControls.isKSelected())
+   {
+    transportSource.setGain(XDDSP::dB2Linear(ref - measuredKRMS));
+   }
+   else
+   {
+    transportSource.setGain(XDDSP::dB2Linear(ref - measuredRMS));
+   }
+   transportSource.start();
+  }
+ };
 
  databaseControls.onSearchStringChanged = [&](const juce::String &term)
  {
@@ -47,9 +69,10 @@ tableModel(dbConn)
  addAndMakeVisible(databaseControls);
  addAndMakeVisible(resizerBar);
  
- layout.setItemLayout(0, 100., -1., -0.5);
- layout.setItemLayout(1, 8, 8, 8);
- layout.setItemLayout(2, 280., -1., -0.5);
+ layout.setItemLayout(0, 50., -1., -0.5);
+ layout.setItemLayout(1, 50., -1., -0.5);
+ layout.setItemLayout(2, 8, 8, 8);
+ layout.setItemLayout(3, 280., -1., -0.5);
  
 
  setSize (800, 600);
@@ -59,12 +82,12 @@ tableModel(dbConn)
      && ! juce::RuntimePermissions::isGranted (juce::RuntimePermissions::recordAudio))
  {
   juce::RuntimePermissions::request (juce::RuntimePermissions::recordAudio,
-                                     [&] (bool granted) { setAudioChannels (granted ? 2 : 0, 2); });
+                                     [&] (bool granted) { setAudioChannels (granted ? 2 : 0, 2, audioState.get()); });
  }
  else
  {
   // Specify the number of input and output channels that we want to open
-  setAudioChannels (2, 2);
+  setAudioChannels (2, 2, audioState.get());
  }
  
  audioFormatManager.registerBasicFormats();
@@ -72,6 +95,19 @@ tableModel(dbConn)
  importFileChooser = std::make_unique<juce::FileChooser>("Import Files",
                                                          juce::File(),
                                                          audioFormatManager.getWildcardForAllFormats());
+ 
+ databaseControls.onSettingsClicked = [&]()
+ {
+  juce::DialogWindow::LaunchOptions dialogLauncher;
+  dialogLauncher.content.setOwned(new juce::AudioDeviceSelectorComponent(deviceManager,
+                                                                         0, 0, 2, 2, false,
+                                                                         false, true, false));
+  dialogLauncher.content->setBounds(0, 0, 780, 150);
+  dialogLauncher.dialogBackgroundColour = findColour(juce::DocumentWindow::backgroundColourId);
+  dialogLauncher.resizable = false;
+  dialogLauncher.dialogTitle = "Audio Settings";
+  settingsDialog = dialogLauncher.launchAsync();
+ };
  
  databaseControls.onImportClicked = [&]()
  {
@@ -130,27 +166,30 @@ tableModel(dbConn)
   tableModel.refreshTable();
  };
  
- addAndMakeVisible(envScope);
- envScope.source = &envScopeSource;
- envScope.reverse = false;
- envScope.fillEnable = false;
- envScope.strokeEnable = true;
- envScope.setVerticalScale(0.3);
- 
- addAndMakeVisible(audioScope);
- audioScope.source = &audioScopeSource;
- audioScopeSource.setOffsetAndWindowSize(0, 44100);
- audioScopeSource.setCrossovers(600., 4000.);
- audioScope.reverse = false;
- audioScope.centreEnable = true;
- audioScope.centreLineColour = juce::Colours::white.withBrightness(0.5).withAlpha(0.5f);
- audioScope.guideEnable = true;
- audioScope.minimumThickness = 0.5;
- audioScope.strokeEnable = true;
- audioScope.setVerticalScale(0.3);
- audioScope.drawBackground = false;
- 
- envScopeSource.comparison = &audioScopeSource;
+ for (int i = 0; i < 2; ++i)
+ {
+  addAndMakeVisible(envScope[i]);
+  envScope[i].source = &envScopeSource[i];
+  envScope[i].reverse = false;
+  envScope[i].fillEnable = false;
+  envScope[i].strokeEnable = true;
+  envScope[i].setVerticalScale(0.3);
+  
+  addAndMakeVisible(audioScope[i]);
+  audioScope[i].source = &audioScopeSource[i];
+  audioScopeSource[i].setOffsetAndWindowSize(0, 44100);
+  audioScopeSource[i].setCrossovers(600., 4000.);
+  audioScope[i].reverse = false;
+  audioScope[i].centreEnable = true;
+  audioScope[i].centreLineColour = juce::Colours::white.withBrightness(0.5).withAlpha(0.5f);
+  audioScope[i].guideEnable = true;
+  audioScope[i].minimumThickness = 0.5;
+  audioScope[i].strokeEnable = true;
+  audioScope[i].setVerticalScale(0.3);
+  audioScope[i].drawBackground = false;
+  
+  envScopeSource[i].comparison = &audioScopeSource[i];
+ }
  
  tableModel.onRowSelected = [&](int rowid)
  {
@@ -161,10 +200,26 @@ tableModel(dbConn)
   {
    audioReader.reset(audioFormatManager.createReaderFor(audioFile));
    
-   audioScopeSource.attachReader(audioReader.get(), 0, true);
-   audioScope.update();
+   if (audioReader)
+   {
+    auto newSource = std::make_unique<juce::AudioFormatReaderSource>(audioReader.get(), false);
+    transportSource.setSource(newSource.get(), 0, nullptr, audioReader->sampleRate);
+    readerSource.reset(newSource.release());
+    
+    audioScopeSource[0].attachReader(audioReader.get(), 0, true);
+    audioScope[0].update();
+    if (audioReader->numChannels < 2)
+    {
+     audioScopeSource[1].attachReader(nullptr, 1, true);
+    }
+    else
+    {
+     audioScopeSource[1].attachReader(audioReader.get(), 1, true);
+    }
+    audioScope[1].update();
 
-   updateAnalysis();
+    updateAnalysis(*audioReader);
+   }
   }
   else
   {
@@ -175,32 +230,23 @@ tableModel(dbConn)
   addAndMakeVisible(analysisDisplay);
  };
  
- databaseControls.onRefineChange = [&](int refineParam)
- {
-  refineParameter = refineParam;
-  updateAnalysis();
- };
- 
- databaseControls.onClumpingChange = [&](int clumpingParam)
- {
-  clumpingFrequency = clumpingParam;
-  updateAnalysis();
- };
- 
- databaseControls.onDeleteThreshChange = [&](float deleteParam)
- {
-  deleteThreshold = deleteParam;
-  updateAnalysis();
- };
- 
+/*
  databaseControls.setClumpingParameter(200.);
  databaseControls.setDeleteThresholdParamter(0.05);
  databaseControls.setRefineParameter(10);
+*/
+
  analysisDisplay.setJustificationType(juce::Justification::topLeft);
 }
 
 MainComponent::~MainComponent()
 {
+ settingsDialog.deleteAndZero();
+ 
+ auto props = appProperties.getUserSettings();
+ auto settings = deviceManager.createStateXml();
+ props->setValue("audio", settings.get());
+ 
  // This shuts down the audio device and clears the audio source.
  shutdownAudio();
 }
@@ -214,39 +260,68 @@ void MainComponent::updateAnalysisText()
   float length = 1000.0*(static_cast<float>(audioReader->lengthInSamples) /
                          audioReader->sampleRate);
   text += "Sample Length: " + juce::String(length, 3) + "ms\n";
-  text += "RMS: " + juce::String(XDDSP::linear2dB(measuredRMS), 3) + "dB\n";
-  text += "K-RMS: " + juce::String(XDDSP::linear2dB(measuredKRMS), 3) + "dB\n";
+  if (audioReader->numChannels == 1) text += "Mono ";
+  if (audioReader->numChannels == 2) text += "Stereo ";
+  text += juce::String(static_cast<int>(audioReader->sampleRate)) + "Hz\n";
+  text += "RMS: " + juce::String((measuredRMS), 3) + "dB\n";
+  text += "K-RMS: " + juce::String((measuredKRMS), 3) + "dB\n";
  }
  
- if (waveformEnvelope)
+ if (waveformEnvelope[0])
  {
-  text += "Maxima count: " + juce::String(waveformEnvelope->maxima.size()) + "\n";
+  text += "Left maxima count: " + juce::String(waveformEnvelope[0]->maxima.size()) + "\n";
  }
- 
+ if (waveformEnvelope[1])
+ {
+  text += "Right maxima count: " + juce::String(waveformEnvelope[1]->maxima.size()) + "\n";
+ }
+
  analysisDisplay.setText(text, juce::dontSendNotification);
 }
 
-void MainComponent::updateAnalysis()
+void MainComponent::updateAnalysisForChannel(WaveformEnvelopeAnalyser &analyser, int channel)
 {
  if (audioReader)
  {
-  param.setSampleRate(audioReader->sampleRate);
+  waveformEnvelope[channel].reset(analyser.generateEnvelope(channel));
+  envScopeSource[channel].env = waveformEnvelope[channel].get();
+  envScopeSource[channel].setWindowSize(static_cast<int>(audioReader->lengthInSamples));
+  envScope[channel].update();
+  envScope[channel].repaint();
   
-  WaveformEnvelopeAnalyser analyser(*audioReader);
-  analyser.setClumpingFrequency(clumpingFrequency);
-  waveformEnvelope.reset(analyser.generateEnvelope(0, refineParameter, deleteThreshold));
-  envScopeSource.env = waveformEnvelope.get();
-  envScopeSource.setWindowSize(static_cast<int>(audioReader->lengthInSamples));
-  envScope.update();
-  envScope.repaint();
-  
-  audioScope.repaint();
-  
-  measuredRMS = rmsAnalyser.calculateRMS(*audioReader, 0);
-  measuredKRMS = rmsAnalyser.calculateKWeightedRMS(*audioReader, 0);
-  
-  updateAnalysisText();
+  audioScope[channel].repaint();
  }
+}
+
+void MainComponent::updateAnalysis(juce::AudioFormatReader &reader)
+{
+ param.setSampleRate(reader.sampleRate);
+  
+ WaveformEnvelopeAnalyser analyser(reader);
+ analyser.setClumpingFrequency(clumpingFrequency);
+ analyser.setRefine(refineParameter);
+ analyser.setRemoveThreshold(deleteThreshold);
+
+ updateAnalysisForChannel(analyser, 0);
+  
+ if (reader.numChannels > 1)
+ {
+  updateAnalysisForChannel(analyser, 1);
+ }
+ else
+ {
+  waveformEnvelope[1].reset();
+  envScopeSource[1].env = nullptr;
+  envScope[1].update();
+  envScope[1].repaint();
+  
+  audioScope[1].repaint();
+ }
+  
+ measuredRMS = XDDSP::linear2dB(rmsAnalyser.calculateRMS(reader));
+ measuredKRMS = XDDSP::linear2dB(rmsAnalyser.calculateKWeightedRMS(reader));
+  
+ updateAnalysisText();
 }
 
 void MainComponent::repaintSampleList()
@@ -257,32 +332,24 @@ void MainComponent::repaintSampleList()
 //==============================================================================
 void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRate)
 {
- // This function will be called when the audio device is started, or when
- // its settings (i.e. sample rate, block size, etc) are changed.
- 
- // You can use this function to initialise any resources you might need,
- // but be careful - it will be called on the audio thread, not the GUI thread.
- 
- // For more details, see the help for AudioProcessor::prepareToPlay()
+ transportSource.prepareToPlay(samplesPerBlockExpected, sampleRate);
 }
 
 void MainComponent::getNextAudioBlock (const juce::AudioSourceChannelInfo& bufferToFill)
 {
- // Your audio-processing code goes here!
- 
- // For more details, see the help for AudioProcessor::getNextAudioBlock()
- 
- // Right now we are not producing any data, in which case we need to clear the buffer
- // (to prevent the output of random noise)
- bufferToFill.clearActiveBufferRegion();
+ if (!audioReader)
+ {
+  bufferToFill.clearActiveBufferRegion();
+ }
+ else
+ {
+  transportSource.getNextAudioBlock(bufferToFill);
+ }
 }
 
 void MainComponent::releaseResources()
 {
- // This will be called when the audio device stops, or when it is being
- // restarted due to a setting change.
- 
- // For more details, see the help for AudioProcessor::releaseResources()
+ transportSource.releaseResources();
 }
 
 //==============================================================================
@@ -296,10 +363,11 @@ void MainComponent::paint (juce::Graphics& g)
 
 void MainComponent::resized()
 {
- juce::Component* comps[] = {&envScope, &resizerBar, &databaseControls};
- layout.layOutComponents(comps, 3, 0, 0, getWidth(), getHeight(), true, true);
- audioScope.setBounds(envScope.getBounds());
- analysisDisplay.setBounds(envScope.getBounds().
-                           withHeight(envScope.getHeight()/2).
+ juce::Component* comps[] = {&envScope[0], &envScope[1], &resizerBar, &databaseControls};
+ layout.layOutComponents(comps, 4, 0, 0, getWidth(), getHeight(), true, true);
+ audioScope[0].setBounds(envScope[0].getBounds());
+ audioScope[1].setBounds(envScope[1].getBounds());
+ analysisDisplay.setBounds(envScope[0].getBounds().
+                           withHeight(envScope[0].getHeight()).
                            withLeft(3*getWidth()/4));
 }

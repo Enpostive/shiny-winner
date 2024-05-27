@@ -16,6 +16,8 @@
 
 class RMSAnalyser : public XDDSP::Parameters::ParameterListener
 {
+ static constexpr float SecondsToAnalyse = 0.1;
+ 
  XDDSP::BiquadFilterCoefficients kshelfcoeff;
  XDDSP::BiquadFilterCoefficients khpcoeff;
 
@@ -41,7 +43,6 @@ class RMSAnalyser : public XDDSP::Parameters::ParameterListener
  void setCoefficients(double sr)
  {
   double a;
-  double b2;
   
   a = tan(M_PI*1681.974450955533/sr);
   kshelfcoeff.setCustomFilter((a*a + 1.258720930232562*(a/0.7071752369554196) +
@@ -93,32 +94,45 @@ public:
   setCoefficients(sr);
  }
 
- float calculateRMS(juce::AudioFormatReader &_reader, int channel)
+ float calculateRMS(juce::AudioFormatReader &_reader)
  {
   AudioReaderCache reader(_reader);
   AnalysisAccumulator accum;
   
-  for (int i = 0; i < reader.lengthInSamples; ++i)
+  int samplesToAnalyse = std::min(static_cast<int>(reader.lengthInSamples),
+                                  static_cast<int>(ceil(reader.sampleRate*SecondsToAnalyse)));
+  
+  for (int i = 0; i < samplesToAnalyse; ++i)
   {
-   accum.addSample(reader.read(channel, i));
+   for (int j = 0; j < _reader.numChannels; ++j)
+   {
+    accum.addSample(reader.read(j, i));
+   }
   }
   
   return accum.getRMS();
  }
 
- float calculateKWeightedRMS(juce::AudioFormatReader &_reader, int channel)
+ float calculateKWeightedRMS(juce::AudioFormatReader &_reader)
  {
   AudioReaderCache reader(_reader);
   AnalysisAccumulator accum;
   XDDSP::BiquadFilterKernel hpKern;
   XDDSP::BiquadFilterKernel shelfKern;
   
-  for (int i = 0; i < reader.lengthInSamples; ++i)
+  int samplesToAnalyse = std::min(static_cast<int>(reader.lengthInSamples),
+                                  static_cast<int>(ceil(reader.sampleRate*SecondsToAnalyse)));
+  for (int channel = 0; channel < _reader.numChannels; ++channel)
   {
-   float x = reader.read(channel, i);
-   x = shelfKern.process(kshelfcoeff, x);
-   x = hpKern.process(khpcoeff, x);
-   accum.addSample(x);
+   hpKern.reset();
+   shelfKern.reset();
+   for (int i = 0; i < samplesToAnalyse; ++i)
+   {
+    float x = reader.read(channel, i);
+    x = shelfKern.process(kshelfcoeff, x);
+    x = hpKern.process(khpcoeff, x);
+    accum.addSample(x);
+   }
   }
   
   return accum.getRMS();

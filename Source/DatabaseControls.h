@@ -52,21 +52,16 @@ public:
  std::function<void ()> onPreviewClicked;
  std::function<void (const juce::String&)> onSearchStringChanged;
  std::function<void (int)> onFilterChange;
- std::function<void (int)> onRefineChange;
- std::function<void (int)> onClumpingChange;
- std::function<void (float)> onDeleteThreshChange;
-
- void setRefineParameter(int param)
- { if (refineParameter) refineParameter->setValue(param); }
- 
- void setClumpingParameter(float param)
- { if (clumpingParam) clumpingParam->setValue(param); }
-
- void setDeleteThresholdParamter(float param)
- { if (removeParam) removeParam->setValue(param); }
+ std::function<void ()> onSettingsClicked;
 
  void resetFilterItems();
  void addFilterItem(const juce::String &item, int itemId);
+
+ float getReferenceLevel()
+ { if (referenceLevel) return referenceLevel->getValue(); else return 0.; }
+
+ bool isKSelected()
+ { if (krmsSelect) return krmsSelect->getToggleState(); else return false; }
     //[/UserMethods]
 
     void paint (juce::Graphics& g) override;
@@ -87,12 +82,9 @@ private:
     std::unique_ptr<juce::TextButton> previewButton;
     std::unique_ptr<juce::TextEditor> searchbar;
     std::unique_ptr<juce::ComboBox> categoryFilter;
-    std::unique_ptr<juce::Slider> refineParameter;
-    std::unique_ptr<juce::Label> juce__label;
-    std::unique_ptr<juce::Slider> clumpingParam;
-    std::unique_ptr<juce::Label> juce__label2;
-    std::unique_ptr<juce::Slider> removeParam;
-    std::unique_ptr<juce::Label> juce__label3;
+    std::unique_ptr<juce::ToggleButton> krmsSelect;
+    std::unique_ptr<juce::Slider> referenceLevel;
+    std::unique_ptr<juce::TextButton> audioSettings;
 
 
     //==============================================================================

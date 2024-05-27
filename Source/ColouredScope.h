@@ -227,9 +227,9 @@ class AudioFileScopeSource : public ScopeDataSource
    for (int i = 0; i < newWindowSize; ++i)
    {
     procFilters(buffer.getSample(channelSelected, i));
-    buffer.setSample(1, i, bassSample);
-    buffer.setSample(2, i, midsSample);
-    buffer.setSample(3, i, highSample);
+    buffer.setSample(2, i, bassSample);
+    buffer.setSample(3, i, midsSample);
+    buffer.setSample(4, i, highSample);
    }
   }
   else
@@ -252,7 +252,7 @@ public:
  lowLPCoeff(dspParam),
  highLPCoeff(dspParam)
  {
-  leadIn.setSize(1, ProcessingLeadIn);
+  leadIn.setSize(2, ProcessingLeadIn);
  }
  
  virtual ~AudioFileScopeSource() {}
@@ -304,18 +304,18 @@ public:
   float t = gain*(buffer.getSample(channelSelected, start));
   ScopePoint result = {t, t, defaultColour};
 
-  float mb = fabs(buffer.getSample(1, start));
-  float mm = fabs(buffer.getSample(2, start));
-  float mh = fabs(buffer.getSample(3, start));
+  float mb = fabs(buffer.getSample(2, start));
+  float mm = fabs(buffer.getSample(3, start));
+  float mh = fabs(buffer.getSample(4, start));
 
   for (int i = start + 1; i < end; ++i)
   {
    float t = gain*(buffer.getSample(channelSelected, i));
    result.min = std::min(result.min, t);
    result.max = std::max(result.max, t);
-   mb = std::max(mb, fabs(buffer.getSample(1, i)));
-   mm = std::max(mm, fabs(buffer.getSample(2, i)));
-   mh = std::max(mh, fabs(buffer.getSample(3, i)));
+   mb = std::max(mb, fabs(buffer.getSample(2, i)));
+   mm = std::max(mm, fabs(buffer.getSample(3, i)));
+   mh = std::max(mh, fabs(buffer.getSample(4, i)));
   }
   
   result.colour = translateSpectrumToColour(mb, mm, mh, defaultColour);

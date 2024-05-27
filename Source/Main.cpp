@@ -24,8 +24,11 @@ public:
  void initialise (const juce::String& commandLine) override
  {
   // This method is where you should put your application's initialisation code..
+  appOptions.applicationName = getApplicationName();
+  appOptions.filenameSuffix = ".opt";
+  appOptions.osxLibrarySubFolder = "Application Support";
   
-  mainWindow.reset (new MainWindow (getApplicationName()));
+  mainWindow.reset (new MainWindow (getApplicationName(), appOptions));
  }
  
  void shutdown() override
@@ -58,14 +61,14 @@ public:
  class MainWindow    : public juce::DocumentWindow
  {
  public:
-  MainWindow (juce::String name)
+  MainWindow (juce::String name, juce::PropertiesFile::Options &appOptions)
   : DocumentWindow (name,
                     juce::Desktop::getInstance().getDefaultLookAndFeel()
                     .findColour (juce::ResizableWindow::backgroundColourId),
                     DocumentWindow::allButtons)
   {
    setUsingNativeTitleBar (true);
-   setContentOwned (new MainComponent(), true);
+   setContentOwned (new MainComponent(appOptions), true);
    
 #if JUCE_IOS || JUCE_ANDROID
    setFullScreen (true);
@@ -98,6 +101,7 @@ public:
  };
  
 private:
+ juce::PropertiesFile::Options appOptions;
  std::unique_ptr<MainWindow> mainWindow;
 };
 
