@@ -19,14 +19,18 @@ tableModel(dbConn)
   {
    transportSource.setPosition(0.);
    float ref = databaseControls.getReferenceLevel();
+   float peak = waveformAnalysis.peakdB;
+   float gain;
    if (databaseControls.isKSelected())
    {
-    transportSource.setGain(XDDSP::dB2Linear(ref - measuredKRMS));
+    gain = ref - waveformAnalysis.krmsdB;
    }
    else
    {
-    transportSource.setGain(XDDSP::dB2Linear(ref - measuredRMS));
+    gain = ref - waveformAnalysis.rmsdB;
    }
+   if (gain > -peak) gain = -peak;
+   transportSource.setGain(XDDSP::dB2Linear(gain));
    transportSource.start();
   }
  };
@@ -198,6 +202,13 @@ tableModel(dbConn)
   juce::File audioFile(dbAccess.getPath());
   if (audioFile.hasReadAccess())
   {
+   transportSource.stop();
+   
+   if (waveAnalyserThread)
+   {
+    waveAnalyserThread->stopThread(-1);
+   }
+
    audioReader.reset(audioFormatManager.createReaderFor(audioFile));
    
    if (audioReader)
@@ -218,7 +229,10 @@ tableModel(dbConn)
     }
     audioScope[1].update();
 
-    updateAnalysis(*audioReader);
+    audioScope[0].repaint();
+    audioScope[1].repaint();
+
+    updateAnalysis();
    }
   }
   else
@@ -255,73 +269,71 @@ void MainComponent::updateAnalysisText()
 {
  juce::String text;
  
- if (audioReader)
+ if (analysisPending)
  {
-  float length = 1000.0*(static_cast<float>(audioReader->lengthInSamples) /
-                         audioReader->sampleRate);
-  text += "Sample Length: " + juce::String(length, 3) + "ms\n";
-  if (audioReader->numChannels == 1) text += "Mono ";
-  if (audioReader->numChannels == 2) text += "Stereo ";
-  text += juce::String(static_cast<int>(audioReader->sampleRate)) + "Hz\n";
-  text += "RMS: " + juce::String((measuredRMS), 3) + "dB\n";
-  text += "K-RMS: " + juce::String((measuredKRMS), 3) + "dB\n";
+  text = "Analysing...";
  }
- 
- if (waveformEnvelope[0])
+ else
  {
-  text += "Left maxima count: " + juce::String(waveformEnvelope[0]->maxima.size()) + "\n";
- }
- if (waveformEnvelope[1])
- {
-  text += "Right maxima count: " + juce::String(waveformEnvelope[1]->maxima.size()) + "\n";
+  if (audioReader)
+  {
+   float length = 1000.0*(static_cast<float>(audioReader->lengthInSamples) /
+                          audioReader->sampleRate);
+   text += "Sample Length: " + juce::String(length, 3) + "ms\n";
+   if (audioReader->numChannels == 1) text += "Mono ";
+   if (audioReader->numChannels == 2) text += "Stereo ";
+   text += juce::String(static_cast<int>(audioReader->sampleRate)) + "Hz\n";
+   text += "RMS: " + juce::String((waveformAnalysis.rmsdB), 3) + "dB\n";
+   text += "K-RMS: " + juce::String((waveformAnalysis.krmsdB), 3) + "dB\n";
+   text += "Peak: " + juce::String(waveformAnalysis.peakdB, 2) + "dB\n";
+  }
+  
+  if (waveformAnalysis.stereo &&
+      waveformAnalysis.envMonoLeft &&
+      waveformAnalysis.envRight)
+  {
+   text += "Left maxima count: " + juce::String(waveformAnalysis.envMonoLeft->maxima.size()) + "\n";
+   text += "Right maxima count: " + juce::String(waveformAnalysis.envRight->maxima.size()) + "\n";
+  }
+  else if (waveformAnalysis.envMonoLeft)
+  {
+   text += "Maxima count: " + juce::String(waveformAnalysis.envMonoLeft->maxima.size()) + "\n";
+  }
  }
 
  analysisDisplay.setText(text, juce::dontSendNotification);
 }
 
-void MainComponent::updateAnalysisForChannel(WaveformEnvelopeAnalyser &analyser, int channel)
+void MainComponent::updateAnalysis()
 {
+ param.setSampleRate(audioReader->sampleRate);
+ 
+ envScopeSource[0].env = nullptr;
+ envScopeSource[1].env = nullptr;
+ envScope[0].update();
+ envScope[1].update();
+ envScope[0].repaint();
+ envScope[1].repaint();
+
  if (audioReader)
  {
-  waveformEnvelope[channel].reset(analyser.generateEnvelope(channel));
-  envScopeSource[channel].env = waveformEnvelope[channel].get();
-  envScopeSource[channel].setWindowSize(static_cast<int>(audioReader->lengthInSamples));
-  envScope[channel].update();
-  envScope[channel].repaint();
-  
-  audioScope[channel].repaint();
- }
-}
+  envScopeSource[0].setWindowSize(audioReader->lengthInSamples);
+  envScopeSource[1].setWindowSize(audioReader->lengthInSamples);
 
-void MainComponent::updateAnalysis(juce::AudioFormatReader &reader)
-{
- param.setSampleRate(reader.sampleRate);
+  if (waveAnalyserThread)
+  {
+   waveAnalyserThread->stopThread(-1);
+  }
   
- WaveformEnvelopeAnalyser analyser(reader);
- analyser.setClumpingFrequency(clumpingFrequency);
- analyser.setRefine(refineParameter);
- analyser.setRemoveThreshold(deleteThreshold);
+  waveAnalyserThread = std::make_unique<Analyser>(*audioReader);
+  waveAnalyserThread->resultsHolder = &waveformAnalysis;
+  waveAnalyserThread->onFinish = [&]()
+  { triggerAsyncUpdate(); };
 
- updateAnalysisForChannel(analyser, 0);
-  
- if (reader.numChannels > 1)
- {
-  updateAnalysisForChannel(analyser, 1);
+  analysisPending = true;
+  updateAnalysisText();
+  waveAnalyserThread->startThread();
  }
- else
- {
-  waveformEnvelope[1].reset();
-  envScopeSource[1].env = nullptr;
-  envScope[1].update();
-  envScope[1].repaint();
-  
-  audioScope[1].repaint();
- }
-  
- measuredRMS = XDDSP::linear2dB(rmsAnalyser.calculateRMS(reader));
- measuredKRMS = XDDSP::linear2dB(rmsAnalyser.calculateKWeightedRMS(reader));
-  
- updateAnalysisText();
 }
 
 void MainComponent::repaintSampleList()
@@ -370,4 +382,21 @@ void MainComponent::resized()
  analysisDisplay.setBounds(envScope[0].getBounds().
                            withHeight(envScope[0].getHeight()).
                            withLeft(3*getWidth()/4));
+}
+
+void MainComponent::handleAsyncUpdate()
+{
+ envScopeSource[0].env = waveformAnalysis.envMonoLeft.get();
+ envScopeSource[1].env = (waveformAnalysis.stereo ?
+                          waveformAnalysis.envRight.get() :
+                          nullptr);
+ 
+ envScope[0].update();
+ envScope[1].update();
+ 
+ envScope[0].repaint();
+ envScope[1].repaint();
+ 
+ analysisPending = false;
+ updateAnalysisText();
 }

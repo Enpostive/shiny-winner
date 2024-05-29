@@ -34,7 +34,12 @@ protected:
    mids *= head;
    high *= head;
    
-   if (std::isinf(bass))
+   if (std::isinf(bass) ||
+       std::isnan(bass) ||
+       std::isinf(mids) ||
+       std::isnan(mids) ||
+       std::isinf(high) ||
+       std::isnan(high))
    {
     bass = defaultColour.getRed();
     mids = defaultColour.getGreen();
@@ -268,6 +273,10 @@ public:
    update(offset,
           resetWindowSize ? static_cast<int>(getFileLength()) : windowSize,
           true);
+  }
+  else
+  {
+   update(offset, windowSize, true);
   }
  }
  

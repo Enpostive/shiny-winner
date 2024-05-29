@@ -5,15 +5,14 @@
 #include "DatabaseTableModel.h"
 #include "ImportDialog.h"
 #include "ColouredScope.h"
-#include "SampleEnvelopeAnalyser.h"
-#include "RMSAnalyser.h"
+#include "Analyser.h"
 
 //==============================================================================
 /*
  This component lives inside our window, and this is where you should put all
  your controls and content.
  */
-class MainComponent  : public juce::AudioAppComponent
+class MainComponent  : public juce::AudioAppComponent, public juce::AsyncUpdater
 {
 public:
 //==============================================================================
@@ -28,6 +27,8 @@ public:
 //==============================================================================
  void paint (juce::Graphics& g) override;
  void resized() override;
+ 
+ void handleAsyncUpdate() override;
  
 private:
 //==============================================================================
@@ -49,14 +50,13 @@ private:
  DatabaseTableModel tableModel;
  juce::Label analysisDisplay;
  
- std::array<std::unique_ptr<WaveformEnvelope>, 2> waveformEnvelope;
  std::array<AudioFileScopeSource, 2> audioScopeSource;
  std::array<AnalysisWaveformSource, 2> envScopeSource;
  std::array<ColouredScope, 2> audioScope;
  std::array<ColouredScope, 2> envScope;
- float measuredRMS;
- float measuredKRMS;
- std::map<int, int> histogram;
+ std::unique_ptr<Analyser> waveAnalyserThread;
+ bool analysisPending {false};
+ Analysis waveformAnalysis;
  
  int refineParameter {0};
  float clumpingFrequency {200.};
@@ -77,8 +77,7 @@ private:
  juce::DialogWindow *importDialogWindow {nullptr};
  juce::Array<juce::File> filesChosen;
  
- void updateAnalysisForChannel(WaveformEnvelopeAnalyser &analyser, int channel);
- void updateAnalysis(juce::AudioFormatReader &reader);
+ void updateAnalysis();
  
  std::unique_ptr<juce::AudioFormatReaderSource> readerSource;
  juce::AudioTransportSource transportSource;

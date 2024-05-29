@@ -94,9 +94,8 @@ public:
   setCoefficients(sr);
  }
 
- float calculateRMS(juce::AudioFormatReader &_reader)
+ float calculateRMS(AudioReaderCache &reader)
  {
-  AudioReaderCache reader(_reader);
   AnalysisAccumulator accum;
   
   int samplesToAnalyse = std::min(static_cast<int>(reader.lengthInSamples),
@@ -104,7 +103,7 @@ public:
   
   for (int i = 0; i < samplesToAnalyse; ++i)
   {
-   for (int j = 0; j < _reader.numChannels; ++j)
+   for (int j = 0; j < reader.numChannels; ++j)
    {
     accum.addSample(reader.read(j, i));
    }
@@ -113,16 +112,15 @@ public:
   return accum.getRMS();
  }
 
- float calculateKWeightedRMS(juce::AudioFormatReader &_reader)
+ float calculateKWeightedRMS(AudioReaderCache &reader)
  {
-  AudioReaderCache reader(_reader);
   AnalysisAccumulator accum;
   XDDSP::BiquadFilterKernel hpKern;
   XDDSP::BiquadFilterKernel shelfKern;
   
   int samplesToAnalyse = std::min(static_cast<int>(reader.lengthInSamples),
                                   static_cast<int>(ceil(reader.sampleRate*SecondsToAnalyse)));
-  for (int channel = 0; channel < _reader.numChannels; ++channel)
+  for (int channel = 0; channel < reader.numChannels; ++channel)
   {
    hpKern.reset();
    shelfKern.reset();

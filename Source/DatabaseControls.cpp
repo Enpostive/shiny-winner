@@ -98,6 +98,7 @@ DatabaseControls::DatabaseControls ()
  };
 
  if (referenceLevel) referenceLevel->setValue(-15.);
+ if (krmsSelect) krmsSelect->setToggleState(true, juce::dontSendNotification);
     //[/UserPreSize]
 
     setSize (800, 400);

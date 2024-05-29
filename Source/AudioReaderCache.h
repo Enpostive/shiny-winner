@@ -53,4 +53,18 @@ public:
   
   return readCache.getSample(channel, i);
  }
+ 
+ template <typename T, unsigned int N>
+ bool read(int channel, int pos, std::array<T, N> &s)
+ {
+  readCache.setSize(reader.numChannels, N);
+  cachedSection = -1;
+  if (reader.read(&readCache, 0, N, pos, true, true))
+  {
+   memcpy(s.data(), readCache.getReadPointer(channel), sizeof(float)*N);
+   return true;
+  }
+  
+  return false;
+ }
 };

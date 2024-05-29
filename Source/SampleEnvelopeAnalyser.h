@@ -30,6 +30,8 @@ public:
 private:
  float sampleRate;
  std::vector<Maxima> wMaxima;
+ float wPeakMaxima {0.};
+ int wPeakTime {0};
 
  int maximaAfterTimeOrEnd(int t) const
  {
@@ -46,12 +48,21 @@ private:
   else
   {
    const int i = maximaAfterTimeOrEnd(m.time);
-   wMaxima.insert(wMaxima.begin() + i, m);
+   if (i < wMaxima.size() && wMaxima[i].time == m.time)
+   {
+    wMaxima[i].amplitude = std::max(m.amplitude, wMaxima[i].amplitude);
+   }
+   else
+   {
+    wMaxima.insert(wMaxima.begin() + i, m);
+   }
   }
  }
 
 public:
  const std::vector<Maxima> &maxima {wMaxima};
+ const float &peakAmplitude {wPeakMaxima};
+ const int &peakTime {wPeakTime};
  
  WaveformEnvelope() {}
  
@@ -161,9 +172,17 @@ private:
  
  int clumpingDistance()
  { return sampleRate/clumpingFrequency; }
+ 
+ bool cancel()
+ {
+  if (checkShouldCancel) return checkShouldCancel();
+  return false;
+ }
 
 public:
- WaveformEnvelopeAnalyser(juce::AudioFormatReader &_reader) :
+ std::function<bool ()> checkShouldCancel;
+ 
+ WaveformEnvelopeAnalyser(AudioReaderCache &_reader) :
  reader(_reader),
  sampleRate(reader.sampleRate)
  {}
@@ -182,7 +201,7 @@ public:
  
  WaveformEnvelope* generateEnvelope(int channel)
  {
-  WaveformEnvelope *env = new WaveformEnvelope();
+  std::unique_ptr<WaveformEnvelope> env {new WaveformEnvelope()};
   env->sampleRate = sampleRate;
   
   int count = static_cast<int>(reader.lengthInSamples);
@@ -197,10 +216,12 @@ public:
    while (i < count && reader.read(channel, i) == 0.) ++i;
 
    // If the sample is empty then a zero envelope will suffice;
-   if (i == count) return env;
+   if (i == count) return env.release();
+   
    
    while (i < count)
    {
+    if (cancel()) return nullptr;
     float sign = XDDSP::signum(reader.read(channel, i));
     WaveformEnvelope::Maxima maxima = {i, fabs(reader.read(channel, i))};
     while ((++i < count) &&
@@ -226,6 +247,7 @@ public:
    auto b = env->wMaxima.begin();
    while (--i > 0)
    {
+    if (cancel()) return nullptr;
     float tAmp = env->wMaxima[i].amplitude;
     int t = env->wMaxima[i].time;
     int j = i - 1;
@@ -252,16 +274,24 @@ public:
    }
   }
   // ===========================================================
+  // Find the absolute maximum peak
   // Delete any maxima which amplitude is less than a percentage of the absolute maximum
   if (refine > 0)
   {
    --refine;
-   float absoluteMax = env->wMaxima.front().amplitude;
+   if (cancel()) return nullptr;
+   env->wPeakMaxima = env->wMaxima.front().amplitude;
+   env->wPeakTime = env->wMaxima.front().time;
    for (int i = 1; i < env->wMaxima.size(); ++i)
    {
-    absoluteMax = std::max(env->wMaxima[i].amplitude, absoluteMax);
+    if (env->wMaxima[i].amplitude > env->wPeakMaxima)
+    {
+     env->wPeakMaxima = env->wMaxima[i].amplitude;
+     env->wPeakTime = env->wMaxima[i].time;
+    }
    }
-   float threshold = removeMaximaBelow*absoluteMax;
+   float threshold = removeMaximaBelow*env->wPeakMaxima;
+   if (cancel()) return nullptr;
    int i = static_cast<int>(env->wMaxima.size() - 1); // Don't check the last envelope point
    auto b = env->wMaxima.begin();
    while (--i > 1) // Don't check the first point either
@@ -283,6 +313,7 @@ public:
    int i = 0;
    while (i < count)
    {
+    if (cancel()) return nullptr;
     if (fabs(reader.read(channel, i)) > env->amplitudeAtSample(i))
     {
      validated = false;
@@ -306,6 +337,7 @@ public:
       int end = env->maxima[maximaIndex].time;
       for (int j = i; j < end; ++j)
       {
+       if (cancel()) return nullptr;
        WaveformEnvelope::Maxima p {j, fabs(reader.read(channel, j))};
        float dTime = p.time - mm1.time;
        float dAmp = p.amplitude - mm1.amplitude;
@@ -329,6 +361,6 @@ public:
   // ===========================================================
   // Done
 
-  return env;
+  return env.release();
  }
 };
