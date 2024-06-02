@@ -2,7 +2,9 @@
 
 //==============================================================================
 MainComponent::MainComponent(juce::PropertiesFile::Options &appOptions) :
-rmsAnalyser(param),
+analysisThreadPool(juce::ThreadPoolOptions()
+                   .withThreadName("Background Analysis")
+                   .withNumberOfThreads(4)),
 resizerBar(&layout, 2, false),
 dbAccess(dbConn),
 tableModel(dbConn)
@@ -34,13 +36,13 @@ tableModel(dbConn)
    transportSource.start();
   }
  };
-
+ 
  databaseControls.onSearchStringChanged = [&](const juce::String &term)
  {
   if (term.isNotEmpty()) tableModel.setSearchTerm(term);
   else tableModel.resetSearch();
  };
-
+ 
  databaseControls.onFilterChange = [&](int categoryIDSelected)
  {
   if (categoryIDSelected == -1)
@@ -67,8 +69,8 @@ tableModel(dbConn)
   repaintTimer.startTimer(20);
  };
  
-// addAndMakeVisible(dummyLabel);
-// dummyLabel.setText("Yay!", juce::dontSendNotification);
+ // addAndMakeVisible(dummyLabel);
+ // dummyLabel.setText("Yay!", juce::dontSendNotification);
  
  addAndMakeVisible(databaseControls);
  addAndMakeVisible(resizerBar);
@@ -78,7 +80,7 @@ tableModel(dbConn)
  layout.setItemLayout(2, 8, 8, 8);
  layout.setItemLayout(3, 280., -1., -0.5);
  
-
+ 
  setSize (800, 600);
  
  // Some platforms require permissions to open input channels so request that here
@@ -121,15 +123,19 @@ tableModel(dbConn)
                        juce::FileBrowserComponent::canSelectDirectories);
   
   importFileChooser->launchAsync(chooserFlags, [&](const juce::FileChooser &chooser)
-  {
+                                 {
    filesChosen = chooser.getResults();
    
-   juce::DialogWindow::LaunchOptions dialogLauncher;
-   dialogLauncher.content.setNonOwned(&importDialog);
-   dialogLauncher.resizable = false;
-   dialogLauncher.escapeKeyTriggersCloseButton = false;
-   dialogLauncher.dialogTitle = "Please choose a category...";
-   importDialogWindow = dialogLauncher.launchAsync();
+   if (filesChosen.size() > 0)
+   {
+    juce::DialogWindow::LaunchOptions dialogLauncher;
+    importDialog.setBounds(0, 0, 304, 152);
+    dialogLauncher.content.setNonOwned(&importDialog);
+    dialogLauncher.resizable = false;
+    dialogLauncher.escapeKeyTriggersCloseButton = false;
+    dialogLauncher.dialogTitle = "Please choose a category...";
+    importDialogWindow = dialogLauncher.launchAsync();
+   }
   });
  };
  
@@ -160,10 +166,15 @@ tableModel(dbConn)
     
     for (auto &g: contents)
     {
-     dbMod.insertRow(g.getFullPathName(), categoryid);
+     int rowid = dbMod.insertRow(g.getFullPathName(), categoryid);
+     startAnalysisOfRow(rowid);
     }
    }
-   else dbMod.insertRow(f.getFullPathName(), categoryid);
+   else
+   {
+    int rowid = dbMod.insertRow(f.getFullPathName(), categoryid);
+    startAnalysisOfRow(rowid);
+   }
   }
   filesChosen.clear();
   
@@ -177,7 +188,7 @@ tableModel(dbConn)
   envScope[i].reverse = false;
   envScope[i].fillEnable = false;
   envScope[i].strokeEnable = true;
-  envScope[i].setVerticalScale(0.3);
+  envScope[i].setVerticalScale(0.4);
   
   addAndMakeVisible(audioScope[i]);
   audioScope[i].source = &audioScopeSource[i];
@@ -189,7 +200,7 @@ tableModel(dbConn)
   audioScope[i].guideEnable = true;
   audioScope[i].minimumThickness = 0.5;
   audioScope[i].strokeEnable = true;
-  audioScope[i].setVerticalScale(0.3);
+  audioScope[i].setVerticalScale(0.4);
   audioScope[i].drawBackground = false;
   
   envScopeSource[i].comparison = &audioScopeSource[i];
@@ -204,11 +215,12 @@ tableModel(dbConn)
   {
    transportSource.stop();
    
-   if (waveAnalyserThread)
+   if (waveAnalyserThread.isThreadRunning())
    {
-    waveAnalyserThread->stopThread(-1);
+    waveAnalyserThread.stopThread(-1);
+    cancelPendingUpdate();
    }
-
+   
    audioReader.reset(audioFormatManager.createReaderFor(audioFile));
    
    if (audioReader)
@@ -228,11 +240,22 @@ tableModel(dbConn)
      audioScopeSource[1].attachReader(audioReader.get(), 1, true);
     }
     audioScope[1].update();
-
+    
     audioScope[0].repaint();
     audioScope[1].repaint();
-
-    updateAnalysis();
+    
+    juce::String analString = dbAccess.getAnalysisForID(dbAccess.getRowId());
+    if (analString.isNotEmpty())
+    {
+     waveformAnalysis.setFromString(analString);
+     envScopeSource[0].setWindowSize(static_cast<int>(audioReader->lengthInSamples));
+     envScopeSource[1].setWindowSize(static_cast<int>(audioReader->lengthInSamples));
+     refreshEnvelopeDisplays();
+    }
+    else
+    {
+     updateAnalysis();
+    }
    }
   }
   else
@@ -244,17 +267,27 @@ tableModel(dbConn)
   addAndMakeVisible(analysisDisplay);
  };
  
-/*
- databaseControls.setClumpingParameter(200.);
- databaseControls.setDeleteThresholdParamter(0.05);
- databaseControls.setRefineParameter(10);
-*/
-
+ /*
+  databaseControls.setClumpingParameter(200.);
+  databaseControls.setDeleteThresholdParamter(0.05);
+  databaseControls.setRefineParameter(10);
+  */
+ 
  analysisDisplay.setJustificationType(juce::Justification::topLeft);
+ 
+ databaseControls.setProgressSpinnerVisible(false);
+ 
+ startBackgroundTimer.startTimer(20);
 }
 
 MainComponent::~MainComponent()
 {
+ if (analysisThreadPool.getNumJobs() > 0)
+ {
+  analysisThreadPool.removeAllJobs(true, 10000);
+//  juce::Thread::sleep(1000);
+ }
+ repaintTimer.stopTimer();
  settingsDialog.deleteAndZero();
  
  auto props = appProperties.getUserSettings();
@@ -265,6 +298,24 @@ MainComponent::~MainComponent()
  shutdownAudio();
 }
 
+void MainComponent::startBackgroundAnalysis()
+{
+ startBackgroundTimer.stopTimer();
+ std::vector<int> unanalysedRows = dbAccess.getUnanalysedRows();
+ for (int i: unanalysedRows) startAnalysisOfRow(i);
+}
+
+void MainComponent::startAnalysisOfRow(int rowid)
+{
+ analysisThreadPool.addJob(new AnalyserJob(dbConn,
+                                           audioFormatManager,
+                                           rowid),
+                           true);
+ repaintTimer.startTimer(1000);
+ const juce::MessageManagerLock mmLock;
+ databaseControls.setProgressSpinnerVisible(true);
+}
+
 void MainComponent::updateAnalysisText()
 {
  juce::String text;
@@ -272,6 +323,7 @@ void MainComponent::updateAnalysisText()
  if (analysisPending)
  {
   text = "Analysing...";
+  
  }
  else
  {
@@ -286,18 +338,19 @@ void MainComponent::updateAnalysisText()
    text += "RMS: " + juce::String((waveformAnalysis.rmsdB), 3) + "dB\n";
    text += "K-RMS: " + juce::String((waveformAnalysis.krmsdB), 3) + "dB\n";
    text += "Peak: " + juce::String(waveformAnalysis.peakdB, 2) + "dB\n";
-  }
-  
-  if (waveformAnalysis.stereo &&
-      waveformAnalysis.envMonoLeft &&
-      waveformAnalysis.envRight)
-  {
-   text += "Left maxima count: " + juce::String(waveformAnalysis.envMonoLeft->maxima.size()) + "\n";
-   text += "Right maxima count: " + juce::String(waveformAnalysis.envRight->maxima.size()) + "\n";
-  }
-  else if (waveformAnalysis.envMonoLeft)
-  {
-   text += "Maxima count: " + juce::String(waveformAnalysis.envMonoLeft->maxima.size()) + "\n";
+
+   if (waveformAnalysis.stereo &&
+       waveformAnalysis.envMonoLeft &&
+       waveformAnalysis.envRight)
+   {
+    text += "Left maxima count: " + juce::String(waveformAnalysis.envMonoLeft->maxima.size()) + "\n";
+    text += "Right maxima count: " + juce::String(waveformAnalysis.envRight->maxima.size()) + "\n";
+   }
+   else if (waveformAnalysis.envMonoLeft)
+   {
+    text += "Maxima count: " + juce::String(waveformAnalysis.envMonoLeft->maxima.size()) + "\n";
+   }
+   //   text += waveformAnalysis.toString();
   }
  }
 
@@ -306,8 +359,6 @@ void MainComponent::updateAnalysisText()
 
 void MainComponent::updateAnalysis()
 {
- param.setSampleRate(audioReader->sampleRate);
- 
  envScopeSource[0].env = nullptr;
  envScopeSource[1].env = nullptr;
  envScope[0].update();
@@ -317,28 +368,33 @@ void MainComponent::updateAnalysis()
 
  if (audioReader)
  {
-  envScopeSource[0].setWindowSize(audioReader->lengthInSamples);
-  envScopeSource[1].setWindowSize(audioReader->lengthInSamples);
+  envScopeSource[0].setWindowSize(static_cast<int>(audioReader->lengthInSamples));
+  envScopeSource[1].setWindowSize(static_cast<int>(audioReader->lengthInSamples));
 
-  if (waveAnalyserThread)
+  if (waveAnalyserThread.isThreadRunning())
   {
-   waveAnalyserThread->stopThread(-1);
+   waveAnalyserThread.stopThread(-1);
+   cancelPendingUpdate();
   }
   
-  waveAnalyserThread = std::make_unique<Analyser>(*audioReader);
-  waveAnalyserThread->resultsHolder = &waveformAnalysis;
-  waveAnalyserThread->onFinish = [&]()
+  waveAnalyserThread.reader = audioReader.get();
+  waveAnalyserThread.resultsHolder = &waveformAnalysis;
+  waveAnalyserThread.onFinish = [&]()
   { triggerAsyncUpdate(); };
 
   analysisPending = true;
   updateAnalysisText();
-  waveAnalyserThread->startThread();
+  waveAnalyserThread.startThread();
  }
 }
 
 void MainComponent::repaintSampleList()
 {
  databaseControls.listBox()->repaint();
+ bool stillAnalysing = analysisThreadPool.getNumJobs() > 0;
+ if (stillAnalysing) repaintTimer.startTimer(1000);
+ else repaintTimer.stopTimer();
+ databaseControls.setProgressSpinnerVisible(stillAnalysing);
 }
 
 //==============================================================================
@@ -385,6 +441,17 @@ void MainComponent::resized()
 }
 
 void MainComponent::handleAsyncUpdate()
+{
+ if (waveformAnalysis.valid)
+ {
+  SampleDatabaseModifier dbMod(dbConn);
+  dbMod.updateAnalysis(dbAccess.getRowId(), waveformAnalysis.toString());
+  repaintTimer.startTimer(20);
+  refreshEnvelopeDisplays();
+ }
+}
+
+void MainComponent::refreshEnvelopeDisplays()
 {
  envScopeSource[0].env = waveformAnalysis.envMonoLeft.get();
  envScopeSource[1].env = (waveformAnalysis.stereo ?

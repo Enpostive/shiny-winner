@@ -85,6 +85,15 @@ public:
  
  ~SampleDatabaseConnection()
  {
+  std::unique_lock lock(mtx);
+  
+  sqlite3_stmt *stmt;
+  do
+  {
+   stmt = sqlite3_next_stmt(db, nullptr);
+   if (stmt) sqlite3_finalize(stmt);
+  } while (stmt != nullptr);
+  
   dotry(sqlite3_close(db), SQLITE_OK);
  }
  
@@ -95,6 +104,7 @@ public:
  
  void reloadCategoriesIntoMap()
  {
+  std::unique_lock lock(mtx);
   sqlite3_stmt *stmt;
   int rowid;
   const char *category;
@@ -150,14 +160,22 @@ class SampleDatabaseAccessor
  constexpr static char SelectRowFilterAndSearchSQL[] =
  "WHERE path LIKE '%' || ?2 || '%' AND categoryid = ?3 ";
  
+ constexpr static char SelectUnanalysedRowIDSQL[] =
+ "SELECT rowid FROM sampleFiles "
+ "WHERE analysis='' OR analysis IS NULL;";
+ 
  // sqlite3 database objects
  SampleDatabaseConnection &dbConn;
  
+ static std::mutex stmtMtx;
+ static bool statementsPrepared;
+ static sqlite3_stmt *selectAnalysisStatement;
+ static sqlite3_stmt *selectUnanalysedRowsStatement;
+ static sqlite3_stmt *selectRowIdStatement;
+ 
  sqlite3_stmt *countRowsStatement;
  sqlite3_stmt *selectRowsStatement;
- sqlite3_stmt *selectAnalysisStatement;
- sqlite3_stmt *selectRowIdStatement;
- 
+
  juce::String orderBy {"ORDER BY path ASC "};
  juce::String searchTerm {""};
  bool categoryFilterEnable {false};
@@ -224,25 +242,32 @@ public:
  SampleDatabaseAccessor(SampleDatabaseConnection &db) :
  dbConn(db)
  {
-  std::unique_lock lock(dbConn.mtx);
-  prepareRowSelect();
+  std::unique_lock lockConn(dbConn.mtx, std::defer_lock);
+  std::unique_lock lockStmt(stmtMtx, std::defer_lock);
+  std::lock(lockConn, lockStmt);
   
-  juce::String query = juce::String(SelectRowPartialSQLFront);
-  query += SelectRowIdPartialSQLEnd;
-  dbConn.prepare(query, &selectRowIdStatement);
+  prepareRowSelect();
 
-  query = juce::String::fromUTF8(SelectAnalysisPartialSQLFront);
-  query += SelectRowIdPartialSQLEnd;
-  dbConn.prepare(query, &selectAnalysisStatement);
+  if (!statementsPrepared)
+  {
+   juce::String query = juce::String(SelectRowPartialSQLFront);
+   query += SelectRowIdPartialSQLEnd;
+   dbConn.prepare(query, &selectRowIdStatement);
+
+   query = juce::String::fromUTF8(SelectAnalysisPartialSQLFront);
+   query += SelectRowIdPartialSQLEnd;
+   dbConn.prepare(query, &selectAnalysisStatement);
+   
+   dbConn.prepare(SelectUnanalysedRowIDSQL, &selectUnanalysedRowsStatement);
+   statementsPrepared = true;
+  }
  }
  
  ~SampleDatabaseAccessor()
  {
-  std::unique_lock lock(dbConn.mtx);
+  std::unique_lock lockConn(dbConn.mtx);
   dbConn.dotry(sqlite3_finalize(countRowsStatement), SQLITE_OK);
   dbConn.dotry(sqlite3_finalize(selectRowsStatement), SQLITE_OK);
-  dbConn.dotry(sqlite3_finalize(selectRowIdStatement), SQLITE_OK);
-  dbConn.dotry(sqlite3_finalize(selectAnalysisStatement), SQLITE_OK);
  }
  
  int getNumRows()
@@ -320,7 +345,7 @@ public:
     if (sqlite3_step(selectRowsStatement) == SQLITE_ROW)
     {
      rowid = sqlite3_column_int(selectRowsStatement, 0);
-     path = juce::String((const char*)sqlite3_column_text(selectRowsStatement, 1));
+     path = juce::String::fromUTF8((const char*)sqlite3_column_text(selectRowsStatement, 1));
      categoryId = sqlite3_column_int(selectRowsStatement, 2);
     }
     dbConn.dotry(sqlite3_reset(selectRowsStatement), SQLITE_OK);
@@ -336,7 +361,7 @@ public:
   {
    selectedRowNumber = -1;
    rowid = sqlite3_column_int(selectRowIdStatement, 0);
-   path = juce::String((const char*)sqlite3_column_text(selectRowIdStatement, 1));
+   path = juce::String::fromUTF8((const char*)sqlite3_column_text(selectRowIdStatement, 1));
    categoryId = sqlite3_column_int(selectRowIdStatement, 2);
   }
   dbConn.dotry(sqlite3_reset(selectRowIdStatement), SQLITE_OK);
@@ -364,11 +389,25 @@ public:
   dbConn.dotry(sqlite3_bind_int(selectAnalysisStatement, 1, rowIdent), SQLITE_OK);
   if (sqlite3_step(selectAnalysisStatement) == SQLITE_ROW)
   {
-   result = juce::String((const char*)sqlite3_column_text(selectAnalysisStatement, 0));
+   result = juce::String::fromUTF8((const char*)sqlite3_column_text(selectAnalysisStatement, 0));
   }
   dbConn.dotry(sqlite3_reset(selectAnalysisStatement), SQLITE_OK);
   
   return result;
+ }
+ 
+ std::vector<int> getUnanalysedRows()
+ {
+  std::unique_lock lock(dbConn.mtx);
+  std::vector<int> rows;
+  
+  while (sqlite3_step(selectUnanalysedRowsStatement) == SQLITE_ROW)
+  {
+   rows.push_back(sqlite3_column_int(selectUnanalysedRowsStatement, 0));
+  }
+  dbConn.dotry(sqlite3_finalize(selectUnanalysedRowsStatement), SQLITE_OK);
+
+  return rows;
  }
 };
 
@@ -397,35 +436,37 @@ class SampleDatabaseModifier
  constexpr static char UpdateAnalysisSQL[] =
  "UPDATE sampleFiles SET analysis = ?1 WHERE rowid = ?2;";
  
- sqlite3_stmt *insertRowStatement;
- sqlite3_stmt *removeRowStatement;
- sqlite3_stmt *updateCategoryStatement;
- sqlite3_stmt *updateAnalysisStatement;
+ static std::mutex stmtMtx;
+ static bool statementsPrepared;
+ static sqlite3_stmt *insertRowStatement;
+ static sqlite3_stmt *removeRowStatement;
+ static sqlite3_stmt *updateCategoryStatement;
+ static sqlite3_stmt *updateAnalysisStatement;
 
 public:
  SampleDatabaseModifier(SampleDatabaseConnection &db) :
  dbConn(db)
  {
-  std::unique_lock lock(dbConn.mtx);
+  std::unique_lock lockConn(dbConn.mtx, std::defer_lock);
+  std::unique_lock lockStmt(stmtMtx, std::defer_lock);
+  std::lock(lockConn, lockStmt);
 
-  dbConn.prepare(InsertRowSQL, &insertRowStatement);
-  dbConn.prepare(RemoveRowSQL, &removeRowStatement);
-  dbConn.prepare(UpdateCategorySQL, &updateCategoryStatement);
-  dbConn.prepare(UpdateAnalysisSQL, &updateAnalysisStatement);
+  if (!statementsPrepared)
+  {
+   dbConn.prepare(InsertRowSQL, &insertRowStatement);
+   dbConn.prepare(RemoveRowSQL, &removeRowStatement);
+   dbConn.prepare(UpdateCategorySQL, &updateCategoryStatement);
+   dbConn.prepare(UpdateAnalysisSQL, &updateAnalysisStatement);
+   statementsPrepared = true;
+  }
  }
  
  ~SampleDatabaseModifier()
- {
-  std::unique_lock lock(dbConn.mtx);
-
-  dbConn.dotry(sqlite3_finalize(insertRowStatement), SQLITE_OK);
-  dbConn.dotry(sqlite3_finalize(removeRowStatement), SQLITE_OK);
-  dbConn.dotry(sqlite3_finalize(updateCategoryStatement), SQLITE_OK);
-  dbConn.dotry(sqlite3_finalize(updateAnalysisStatement), SQLITE_OK);
- }
+ { }
  
  int insertRow(const juce::String &path, int categoryid)
  {
+  std::unique_lock lock(dbConn.mtx);
   int insertedRowId = -1;
   
   dbConn.dotry(sqlite3_bind_text(insertRowStatement, 1,
@@ -445,6 +486,7 @@ public:
  
  void deleteRow(int rowid)
  {
+  std::unique_lock lock(dbConn.mtx);
   dbConn.dotry(sqlite3_bind_int(removeRowStatement, 1, rowid), SQLITE_OK);
   dbConn.dotry(sqlite3_step(removeRowStatement), SQLITE_DONE);
   dbConn.dotry(sqlite3_reset(removeRowStatement), SQLITE_OK);
@@ -452,6 +494,7 @@ public:
  
  void updateCategory(int rowid, int categoryid)
  {
+  std::unique_lock lock(dbConn.mtx);
   dbConn.dotry(sqlite3_bind_int(updateCategoryStatement, 1, categoryid), SQLITE_OK);
   dbConn.dotry(sqlite3_bind_int(updateCategoryStatement, 2, rowid), SQLITE_OK);
   dbConn.dotry(sqlite3_step(updateCategoryStatement), SQLITE_DONE);
@@ -460,12 +503,13 @@ public:
  
  void updateAnalysis(int rowid, const juce::String &analysis)
  {
+  std::unique_lock lock(dbConn.mtx);
   dbConn.dotry(sqlite3_bind_text(updateAnalysisStatement, 1,
                                  analysis.toStdString().data(),
                                  -1, SQLITE_TRANSIENT),
                SQLITE_OK);
   dbConn.dotry(sqlite3_bind_int(updateAnalysisStatement, 2, rowid), SQLITE_OK);
   dbConn.dotry(sqlite3_step(updateAnalysisStatement), SQLITE_DONE);
-  dbConn.dotry(sqlite3_reset(updateCategoryStatement), SQLITE_OK);
+  dbConn.dotry(sqlite3_reset(updateAnalysisStatement), SQLITE_OK);
  }
 };

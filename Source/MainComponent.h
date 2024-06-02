@@ -35,8 +35,7 @@ private:
  juce::ApplicationProperties appProperties;
  juce::Component::SafePointer<juce::DialogWindow> settingsDialog;
  
- XDDSP::Parameters param;
- RMSAnalyser rmsAnalyser;
+ juce::ThreadPool analysisThreadPool;
  
  juce::StretchableLayoutManager layout;
  juce::StretchableLayoutResizerBar resizerBar;
@@ -54,7 +53,7 @@ private:
  std::array<AnalysisWaveformSource, 2> envScopeSource;
  std::array<ColouredScope, 2> audioScope;
  std::array<ColouredScope, 2> envScope;
- std::unique_ptr<Analyser> waveAnalyserThread;
+ AnalyserThread waveAnalyserThread;
  bool analysisPending {false};
  Analysis waveformAnalysis;
  
@@ -66,8 +65,11 @@ private:
  
  void updateAnalysisText();
  void repaintSampleList();
+ void refreshEnvelopeDisplays();
+ void startBackgroundAnalysis();
  
  juce::TimedCallback repaintTimer {[&](){ repaintSampleList(); }};
+ juce::TimedCallback startBackgroundTimer {[&]() { startBackgroundAnalysis(); }};
  
  juce::AudioFormatManager audioFormatManager;
  std::unique_ptr<juce::AudioFormatReader> audioReader;
@@ -78,6 +80,7 @@ private:
  juce::Array<juce::File> filesChosen;
  
  void updateAnalysis();
+ void startAnalysisOfRow(int rowid);
  
  std::unique_ptr<juce::AudioFormatReaderSource> readerSource;
  juce::AudioTransportSource transportSource;

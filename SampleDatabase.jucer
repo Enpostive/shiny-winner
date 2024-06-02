@@ -4,9 +4,9 @@
               addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1">
   <MAINGROUP id="u9pUJF" name="SampleDatabase">
     <GROUP id="{FE77B5A6-BFA1-2B26-A900-38023B89B77A}" name="Source">
+      <FILE id="Tk5DdV" name="ProgressSpinner.h" compile="0" resource="0"
+            file="Source/ProgressSpinner.h"/>
       <FILE id="Cri2ZE" name="Analyser.h" compile="0" resource="0" file="Source/Analyser.h"/>
-      <FILE id="xrssRk" name="AutoCorrelator.h" compile="0" resource="0"
-            file="Source/AutoCorrelator.h"/>
       <FILE id="XOjM5L" name="AudioReaderCache.h" compile="0" resource="0"
             file="Source/AudioReaderCache.h"/>
       <FILE id="EETZiT" name="RMSAnalyser.h" compile="0" resource="0" file="Source/RMSAnalyser.h"/>
@@ -14,6 +14,8 @@
             file="Source/SampleEnvelopeAnalyser.h"/>
       <FILE id="BG6nXD" name="SampleDatabaseClasses.h" compile="0" resource="0"
             file="Source/SampleDatabaseClasses.h"/>
+      <FILE id="a4N0qT" name="SampleDatabaseClasses.cpp" compile="1" resource="0"
+            file="Source/SampleDatabaseClasses.cpp"/>
       <FILE id="aZw4Do" name="DatabaseTableModel.h" compile="0" resource="0"
             file="Source/DatabaseTableModel.h"/>
       <FILE id="Sbt8I6" name="DatabaseControls.cpp" compile="1" resource="0"
@@ -30,7 +32,6 @@
       <FILE id="QD9t83" name="ColouredScope.h" compile="0" resource="0" file="Source/ColouredScope.h"/>
     </GROUP>
     <GROUP id="{9BA2509F-CAAA-6000-BB66-D139B2E9F668}" name="sqlite3">
-      <FILE id="opxtYZ" name="sqlite3.c" compile="1" resource="0" file="Source/sqlite3/sqlite3.c"/>
       <FILE id="nzSH5k" name="sqlite3.h" compile="0" resource="0" file="Source/sqlite3/sqlite3.h"/>
     </GROUP>
     <GROUP id="{2DA23674-8805-B282-73AB-BD820FCD3F87}" name="XDDSP">
@@ -94,7 +95,7 @@
   </MODULES>
   <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1" JUCE_USE_MP3AUDIOFORMAT="1"/>
   <EXPORTFORMATS>
-    <XCODE_MAC targetFolder="Builds/MacOSX">
+    <XCODE_MAC targetFolder="Builds/MacOSX" extraLinkerFlags="../../Source/sqlite3/sqlite3.o">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" targetName="SampleDatabase"/>
         <CONFIGURATION isDebug="0" name="Release" targetName="SampleDatabase"/>

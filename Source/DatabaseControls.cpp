@@ -83,6 +83,10 @@ DatabaseControls::DatabaseControls ()
     audioSettings->setButtonText (TRANS ("Audio Settings..."));
     audioSettings->addListener (this);
 
+    progressSpinner.reset (new ProgressSpinner());
+    addAndMakeVisible (progressSpinner.get());
+    progressSpinner->setName ("Spinner");
+
 
     //[UserPreSize]
  searchbar->onTextChange = [&]()
@@ -121,6 +125,7 @@ DatabaseControls::~DatabaseControls()
     krmsSelect = nullptr;
     referenceLevel = nullptr;
     audioSettings = nullptr;
+    progressSpinner = nullptr;
 
 
     //[Destructor]. You can add your own custom destruction code here..
@@ -151,6 +156,7 @@ void DatabaseControls::resized()
     krmsSelect->setBounds (getWidth() - 158, 40, 150, 24);
     referenceLevel->setBounds (getWidth() - 158, 72, 150, 48);
     audioSettings->setBounds (getWidth() - 158, getHeight() - 64, 150, 24);
+    progressSpinner->setBounds (getWidth() - 158, 136, 150, getHeight() - 211);
     //[UserResized] Add your own custom resize handling here..
     //[/UserResized]
 }
@@ -283,6 +289,9 @@ BEGIN_JUCER_METADATA
   <TEXTBUTTON name="Audio Settings" id="1471f02fccd930fd" memberName="audioSettings"
               virtualName="" explicitFocusOrder="0" pos="158R 64R 150 24" buttonText="Audio Settings..."
               connectedEdges="0" needsCallback="1" radioGroupId="0"/>
+  <GENERICCOMPONENT name="Spinner" id="32053054da40481f" memberName="progressSpinner"
+                    virtualName="ProgressSpinner" explicitFocusOrder="0" pos="158R 136 150 211M"
+                    class="juce::Component" params=""/>
 </JUCER_COMPONENT>
 
 END_JUCER_METADATA

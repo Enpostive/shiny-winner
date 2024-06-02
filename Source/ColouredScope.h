@@ -479,6 +479,8 @@ public:
  
  bool reverse {true};
  
+ std::function <void (float)> onClick;
+ 
  ColouredScope()
  {
  }
@@ -647,6 +649,18 @@ public:
   update();
  }
  
+ void mouseDown(const juce::MouseEvent &event) override
+ {
+  if (onClick && source)
+  {
+   const float rangeSize = source->getRangeSize();
+   const float width = getWidth();
+   const float click = event.getMouseDownX();
+   onClick(click*rangeSize/width);
+  }
+ }
+ 
 private:
  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ColouredScope)
 };
+

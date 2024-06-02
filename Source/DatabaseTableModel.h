@@ -51,6 +51,7 @@ class DatabaseTableModel : public juce::TableListBoxModel, public juce::Componen
   bool fileError {false};
   juce::File sampleFile;
   int category {0};
+  bool analysisReady {false};
  };
 
  XDDSP::PowerSize cacheSize;
@@ -79,6 +80,8 @@ class DatabaseTableModel : public juce::TableListBoxModel, public juce::Componen
    rowCache[cacheLine].rowid = dbAccess.getRowId();
    rowCache[cacheLine].sampleFile = juce::File(dbAccess.getPath());
    rowCache[cacheLine].category = dbAccess.getCategoryID();
+   rowCache[cacheLine].fileError = !rowCache[cacheLine].sampleFile.hasReadAccess();
+   rowCache[cacheLine].analysisReady = dbAccess.getAnalysisForID(rowCache[cacheLine].rowid).isNotEmpty();
   }
    
   return rowCache[cacheLine];
@@ -217,6 +220,13 @@ public:
     {
      g.setColour(juce::Colours::red);
      g.drawText("!",
+                2, 0, width - 4, height,
+                juce::Justification::centredLeft, true);
+    }
+    else if (row.analysisReady)
+    {
+     g.setColour(juce::Colours::green.withBrightness(0.5));
+     g.drawText("~",
                 2, 0, width - 4, height,
                 juce::Justification::centredLeft, true);
     }

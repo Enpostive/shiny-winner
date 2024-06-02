@@ -21,6 +21,7 @@
 
 //[Headers]     -- You can add your own extra header files here --
 #include <JuceHeader.h>
+#include "ProgressSpinner.h"
 //[/Headers]
 
 
@@ -62,6 +63,9 @@ public:
 
  bool isKSelected()
  { if (krmsSelect) return krmsSelect->getToggleState(); else return false; }
+ 
+ void setProgressSpinnerVisible(bool shouldBeVisible)
+ { if (progressSpinner) progressSpinner->setVisible(shouldBeVisible); }
     //[/UserMethods]
 
     void paint (juce::Graphics& g) override;
@@ -85,6 +89,7 @@ private:
     std::unique_ptr<juce::ToggleButton> krmsSelect;
     std::unique_ptr<juce::Slider> referenceLevel;
     std::unique_ptr<juce::TextButton> audioSettings;
+    std::unique_ptr<ProgressSpinner> progressSpinner;
 
 
     //==============================================================================

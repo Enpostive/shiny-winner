@@ -71,31 +71,32 @@ public:
   // Throws an exception if an error is detected
   
   juce::StringArray tokens = juce::StringArray::fromTokens(stringRep, false);
-  if (tokens.size() == 0) throw std::runtime_error("String does not contain any tokens");
-  
-  int maximaCount = tokens[0].getIntValue();
-  
-  if (tokens.size() != (maximaCount*2 + 1))
+  if (tokens.size() > 0)
   {
-   throw std::runtime_error("Token count does not match up with maxima count");
-  }
-  
-  for (int i = 1; i < tokens.size(); i += 2)
-  {
-   Maxima m;
-   m.time = tokens[i].getIntValue();
-   m.amplitude = tokens[i + 1].getFloatValue();
+   int maximaCount = tokens[0].getIntValue();
    
-   wMaxima.push_back(m);
-  }
-  
-  // Check to see if the list is sorted. If not, throw an error
-  if (!std::is_sorted(maxima.begin(),
-                      maxima.end(),
-                      [](const Maxima &lhs, const Maxima &rhs)
-                      { return lhs.time < rhs.time; }))
-  {
-   throw std::runtime_error("Envelope decode expects sorted array of maxima");
+   if (tokens.size() != (maximaCount*2 + 1))
+   {
+    throw std::runtime_error("Token count does not match up with maxima count");
+   }
+   
+   for (int i = 1; i < tokens.size(); i += 2)
+   {
+    Maxima m;
+    m.time = tokens[i].getIntValue();
+    m.amplitude = tokens[i + 1].getFloatValue();
+    
+    wMaxima.push_back(m);
+   }
+   
+   // Check to see if the list is sorted. If not, throw an error
+   if (!std::is_sorted(maxima.begin(),
+                       maxima.end(),
+                       [](const Maxima &lhs, const Maxima &rhs)
+                       { return lhs.time < rhs.time; }))
+   {
+    throw std::runtime_error("Envelope decode expects sorted array of maxima");
+   }
   }
  }
  
@@ -201,6 +202,7 @@ public:
  
  WaveformEnvelope* generateEnvelope(int channel)
  {
+  int _refine = refine;
   std::unique_ptr<WaveformEnvelope> env {new WaveformEnvelope()};
   env->sampleRate = sampleRate;
   
@@ -209,9 +211,9 @@ public:
   // ===========================================================
   // First pass
   // Record maxima between zero-crossings
-  if (refine > 0)
+  if (_refine > 0)
   {
-   --refine;
+   --_refine;
    int i = 0;
    while (i < count && reader.read(channel, i) == 0.) ++i;
 
@@ -238,11 +240,11 @@ public:
   }
   // ===========================================================
   // Second pass
-  // Delete envelope points which have higher points that are within
+  // Delete envelope points which have higher pointson both sides that are within
   // clumping distance
-  if (refine > 0)
+  if (_refine > 0)
   {
-   --refine;
+   --_refine;
    int i = static_cast<int>(env->wMaxima.size() - 1);
    auto b = env->wMaxima.begin();
    while (--i > 0)
@@ -276,9 +278,9 @@ public:
   // ===========================================================
   // Find the absolute maximum peak
   // Delete any maxima which amplitude is less than a percentage of the absolute maximum
-  if (refine > 0)
+  if (_refine > 0)
   {
-   --refine;
+   --_refine;
    if (cancel()) return nullptr;
    env->wPeakMaxima = env->wMaxima.front().amplitude;
    env->wPeakTime = env->wMaxima.front().time;
@@ -307,7 +309,7 @@ public:
   // Validate the envelope and add an extra maxima for each segment where the
   // waveform value exceeds the envelope value
   bool validated {false};
-  while (!validated && refine-- > 0)
+  while (!validated && _refine-- > 0)
   {
    validated = true;
    int i = 0;
