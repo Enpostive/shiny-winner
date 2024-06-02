@@ -163,7 +163,7 @@ public:
 class WaveformEnvelopeAnalyser
 {
 private:
- AudioReaderCache reader;
+ AudioReaderCache &reader;
 
  const float sampleRate;
  float clumpingFrequency {100.};
@@ -326,6 +326,7 @@ public:
          maximaIndex == env->maxima.size())
      {
       env->insertMaxima({i, reader.read(channel, i)});
+      ++i;
      }
      else
      {

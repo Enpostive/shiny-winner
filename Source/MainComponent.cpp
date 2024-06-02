@@ -282,6 +282,7 @@ tableModel(dbConn)
 
 MainComponent::~MainComponent()
 {
+ startBackgroundTimer.stopTimer();
  if (analysisThreadPool.getNumJobs() > 0)
  {
   analysisThreadPool.removeAllJobs(true, 10000);

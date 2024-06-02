@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include "XDDSP/XDDSP.h"
+#include "../../Source/XDDSP/XDDSP.h"
 
 namespace XDDSP
 {

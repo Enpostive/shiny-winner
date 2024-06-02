@@ -7,7 +7,7 @@
   the "//[xyz]" and "//[/xyz]" sections will be retained when the file is loaded
   and re-saved.
 
-  Created with Projucer version: 7.0.11
+  Created with Projucer version: 7.0.12
 
   ------------------------------------------------------------------------------
 
@@ -42,6 +42,8 @@ public:
 
     //==============================================================================
     //[UserMethods]     -- You can add your own custom methods in this section.
+ juce::TableListBox& sampleList()
+ { return *sampleListBox; }
     //[/UserMethods]
 
     void paint (juce::Graphics& g) override;
@@ -54,6 +56,7 @@ private:
     //[/UserVariables]
 
     //==============================================================================
+    std::unique_ptr<juce::TableListBox> sampleListBox;
 
 
     //==============================================================================

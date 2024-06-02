@@ -11,6 +11,8 @@
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
 #include "Controls.h"
+#include "DatabaseTableModel.h"
+#include "../../Source/ColouredScope.h"
 
 //==============================================================================
 /**
@@ -33,10 +35,11 @@ private:
  typedef juce::AudioProcessorValueTreeState::ComboBoxAttachment ComboBoxAttachment;
 
  SampleDatabasePlayerAudioProcessor& audioProcessor;
- 
  juce::AudioProcessorValueTreeState& valueTreeState;
+ SampleDatabaseConnection dbConn;
  std::unique_ptr<XDLookAndFeel> lookAndFeel;
  Controls controls;
+ DatabaseTableModel listModel;
 
 // std::vector<std::unique_ptr<juce::Component>> components;
  std::vector<std::unique_ptr<SliderAttachment>> sliderAttach;

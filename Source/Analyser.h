@@ -93,11 +93,11 @@ struct Analysis
 
 class Analyser
 {
- AudioReaderCache reader;
+ AudioReaderCache &reader;
  XDDSP::Parameters param;
  
 public:
- Analyser(juce::AudioFormatReader &_reader) :
+ Analyser(AudioReaderCache &_reader) :
  reader(_reader)
  {
   param.setSampleRate(reader.sampleRate);
@@ -160,7 +160,8 @@ public:
  
  void run()
  {
-  Analyser analyser(*reader);
+  JuceFileReaderCache cache(*reader);
+  Analyser analyser(cache);
   
   if (resultsHolder)
   {
@@ -201,7 +202,8 @@ public:
    std::unique_ptr<juce::AudioFormatReader> audioReader {formatManager.createReaderFor(audioFile)};
    if (audioReader)
    {
-    Analyser analyser(*audioReader);
+    JuceFileReaderCache cache(*audioReader);
+    Analyser analyser(cache);
     analyser.doAnalysis(results, [&](){ return shouldExit(); });
     if (results.valid)
     {

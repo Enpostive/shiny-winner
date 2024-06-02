@@ -11,7 +11,8 @@
 
 //==============================================================================
 SampleDatabasePlayerAudioProcessorEditor::SampleDatabasePlayerAudioProcessorEditor (SampleDatabasePlayerAudioProcessor& p, juce::AudioProcessorValueTreeState &vts)
-: AudioProcessorEditor (&p), audioProcessor (p), valueTreeState(vts)
+: AudioProcessorEditor (&p), audioProcessor (p), valueTreeState(vts),
+listModel(dbConn)
 {
  std::unique_lock lock(audioProcessor.mtx);
  juce::Slider::RotaryParameters rotaryParam;
@@ -24,6 +25,8 @@ SampleDatabasePlayerAudioProcessorEditor::SampleDatabasePlayerAudioProcessorEdit
  
  addAndMakeVisible(controls);
  controls.setTopLeftPosition(0, 0);
+ 
+ controls.sampleList().setModel(&listModel);
  
  for (const ParameterSpec &pS : p.paramSpecs)
  {

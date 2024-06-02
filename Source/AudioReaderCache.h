@@ -15,11 +15,7 @@
 
 class AudioReaderCache
 {
- juce::AudioFormatReader &reader;
- juce::AudioBuffer<float> readCache;
- static constexpr XDDSP::PowerSize ReadCacheSize {9};
- int cachedSection {-1};
- 
+protected:
  double _sr;
  juce::int64 _len;
  int _chCount;
@@ -29,18 +25,36 @@ public:
  const juce::int64 &lengthInSamples;
  const int &numChannels;
  
- AudioReaderCache(juce::AudioFormatReader &_reader) :
- reader(_reader),
+ AudioReaderCache() :
  sampleRate(_sr),
  lengthInSamples(_len),
  numChannels(_chCount)
+ {}
+
+ virtual ~AudioReaderCache() {}
+ 
+ virtual float read(int channel, int pos) = 0;
+};
+
+
+
+class JuceFileReaderCache : public AudioReaderCache
+{
+ juce::AudioFormatReader &reader;
+ juce::AudioBuffer<float> readCache;
+ static constexpr XDDSP::PowerSize ReadCacheSize {9};
+ int cachedSection {-1};
+ 
+public:
+ JuceFileReaderCache(juce::AudioFormatReader &_reader) :
+ reader(_reader)
  {
   _sr = _reader.sampleRate;
   _len = _reader.lengthInSamples;
   _chCount = _reader.numChannels;
  }
  
- float read(int channel, int pos)
+ float read(int channel, int pos) override
  {
   int i = pos & ReadCacheSize.mask();
   int sec = pos - i;
@@ -53,7 +67,8 @@ public:
   
   return readCache.getSample(channel, i);
  }
- 
+
+ /*
  template <typename T, unsigned int N>
  bool read(int channel, int pos, std::array<T, N> &s)
  {
@@ -66,5 +81,34 @@ public:
   }
   
   return false;
+ }*/
+};
+
+
+
+
+class MemoryBufferReader : public AudioReaderCache
+{
+ std::array<float*, 2> buffers;
+ 
+public:
+ template <unsigned long N>
+ MemoryBufferReader(std::array<float*, N> _buffers,
+                    double sampleRate,
+                    juce::int64 sampleCount)
+ {
+  static_assert(N > 0 && N < 3, "MemoryBufferReader only supports one or two channels");
+  buffers[0] = _buffers[0];
+  if (N == 2) buffers[1] = _buffers[1];
+  else buffers[1] = nullptr;
+  _sr = sampleRate;
+  _chCount = N;
+  _len = sampleCount;
+ }
+
+ float read(int channel, int pos) override
+ {
+  jassert(channel < _chCount);
+  return buffers[channel][pos];
  }
 };

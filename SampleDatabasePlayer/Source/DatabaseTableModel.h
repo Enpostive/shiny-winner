@@ -11,8 +11,8 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "SampleDatabaseClasses.h"
-#include "XDDSP/XDDSP_Functions.h"
+#include "../../Source/SampleDatabaseClasses.h"
+#include "../../Source/XDDSP/XDDSP_Functions.h"
 
 
 
@@ -132,11 +132,10 @@ public:
   {
    table->setModel(this);
    table->addComponentListener(this);
-   table->setMultipleSelectionEnabled(true);
    
    table->setColour(juce::ListBox::backgroundColourId, juce::Colours::black);
    table->setRowHeight(font.getHeight() + 2);
-
+   
    table->getHeader().removeAllColumns();
    table->getHeader().addColumn("", StatusColumn, 20, 20, 20,
                                 juce::TableHeaderComponent::notResizableOrSortable);
@@ -268,85 +267,5 @@ public:
  {
   auto row = touchCache(lastRowSelected);
   if (onRowSelected) onRowSelected(row.rowid);
- }
- 
- virtual void cellClicked(int rowNumber,
-                          int columnId,
-                          const juce::MouseEvent &m) override
- {
-  auto row = touchCache(rowNumber);
-  
-  if (m.mods.isRightButtonDown())
-  {
-   juce::PopupMenu categoryMenu;
-   for (auto i: dbConn.categories)
-   {
-    categoryMenu.addItem(100 + i.first, i.second);
-   }
-   
-   juce::PopupMenu menu;
-   menu.addItem(1, "Remove");
-   menu.addSeparator();
-   menu.addSubMenu("Change Category", categoryMenu);
-   
-   menu.showMenuAsync(juce::PopupMenu::Options(), [&, this, rowNumber](int result)
-   {
-    dbAccess.selectRow(rowNumber);
-    if (result == 1)
-    {
-     deleteRows(table->getSelectedRows());
-    }
-    else if (result > 100)
-    {
-     int newCategory = result - 100;
-     changeCategoryOfRows(table->getSelectedRows(), newCategory);
-    }
-   });
-  }
- }
- 
- std::vector<int> getRowIds(const juce::SparseSet<int> &rows)
- {
-  std::vector<int> rowids;
-  int rowCount = rows.size();
-  rowids.reserve(rowCount);
-  for (int i = 0; i < rowCount; ++i)
-  {
-   dbAccess.selectRow(rows[i]);
-   rowids.push_back(dbAccess.getRowId());
-  }
-  
-  return rowids;
- }
- 
- void deleteRows(const juce::SparseSet<int> &rows)
- {
-  auto rowids = getRowIds(rows);
-  
-  for (int i: rowids)
-  {
-   dbMod.deleteRow(i);
-  }
-  refreshTable();
- }
- 
- void changeCategoryOfRows(const juce::SparseSet<int> &rows, int newCategory)
- {
-  auto rowids = getRowIds(rows);
-
-  for (int i: rowids)
-  {
-   dbMod.updateCategory(i, newCategory);
-  }
-  refreshTable();
- }
- 
- void deleteKeyPressed(int lastRowSelected) override
- {
-  if (table)
-  {
-   deleteRows(table->getSelectedRows());
-   table->deselectAllRows();
-  }
  }
 };

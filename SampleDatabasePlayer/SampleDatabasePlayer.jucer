@@ -9,6 +9,8 @@
       <FILE id="RXjjZi" name="AudioReaderCache.h" compile="0" resource="0"
             file="../Source/AudioReaderCache.h"/>
       <FILE id="yr5i6X" name="ColouredScope.h" compile="0" resource="0" file="../Source/ColouredScope.h"/>
+      <FILE id="TM6wTQ" name="DatabaseTableModel.h" compile="0" resource="0"
+            file="Source/DatabaseTableModel.h"/>
       <FILE id="VVkQH3" name="RMSAnalyser.h" compile="0" resource="0" file="../Source/RMSAnalyser.h"/>
       <FILE id="fiyFzk" name="SampleDatabaseClasses.cpp" compile="1" resource="0"
             file="../Source/SampleDatabaseClasses.cpp"/>

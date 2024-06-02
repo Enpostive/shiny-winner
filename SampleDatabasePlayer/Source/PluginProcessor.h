@@ -10,6 +10,8 @@
 
 #include <JuceHeader.h>
 #include "PluginParameters.h"
+#include "../../Source/SampleDatabaseClasses.h"
+#include "../../Source/Analyser.h"
 #include "DSP.h"
 
 //==============================================================================

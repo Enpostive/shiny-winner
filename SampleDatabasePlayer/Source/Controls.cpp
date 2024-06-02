@@ -7,7 +7,7 @@
   the "//[xyz]" and "//[/xyz]" sections will be retained when the file is loaded
   and re-saved.
 
-  Created with Projucer version: 7.0.11
+  Created with Projucer version: 7.0.12
 
   ------------------------------------------------------------------------------
 
@@ -32,6 +32,11 @@ Controls::Controls ()
     //[Constructor_pre] You can add your own custom stuff here..
     //[/Constructor_pre]
 
+    sampleListBox.reset (new juce::TableListBox ("sampleListBox"));
+    addAndMakeVisible (sampleListBox.get());
+
+    sampleListBox->setBounds (0, 0, 400, 80);
+
 
     //[UserPreSize]
     for (auto &child: getChildren())
@@ -40,7 +45,7 @@ Controls::Controls ()
  }
     //[/UserPreSize]
 
-    setSize (400, 300);
+    setSize (400, 400);
 
 
     //[Constructor] You can add your own custom stuff here..
@@ -52,6 +57,7 @@ Controls::~Controls()
     //[Destructor_pre]. You can add your own custom destruction code here..
     //[/Destructor_pre]
 
+    sampleListBox = nullptr;
 
 
     //[Destructor]. You can add your own custom destruction code here..
@@ -94,11 +100,14 @@ void Controls::resized()
 
 BEGIN_JUCER_METADATA
 
-<JUCER_COMPONENT documentType="Component" className="Controls"
-                 componentName="" parentClasses="public juce::Component" constructorParams=""
-                 variableInitialisers="" snapPixels="8" snapActive="1" snapShown="1"
-                 overlayOpacity="0.330" fixedSize="1" initialWidth="400" initialHeight="300">
+<JUCER_COMPONENT documentType="Component" className="Controls" componentName=""
+                 parentClasses="public juce::Component" constructorParams="" variableInitialisers=""
+                 snapPixels="8" snapActive="1" snapShown="1" overlayOpacity="0.330"
+                 fixedSize="1" initialWidth="400" initialHeight="400">
   <BACKGROUND backgroundColour="ff323e44"/>
+  <TREEVIEW name="sampleListBox" id="5cc1b467e1895d2f" memberName="sampleListBox"
+            virtualName="juce::TableListBox" explicitFocusOrder="0" pos="0 0 400 80"
+            rootVisible="1" openByDefault="0"/>
 </JUCER_COMPONENT>
 
 END_JUCER_METADATA

@@ -251,6 +251,7 @@ class AudioFileScopeSource : public ScopeDataSource
  }
  
 public:
+ bool useDefaultColour {false};
  juce::Colour defaultColour {juce::Colours::white.withBrightness(0.5)};
  
  AudioFileScopeSource() :
@@ -327,7 +328,8 @@ public:
    mh = std::max(mh, fabs(buffer.getSample(4, i)));
   }
   
-  result.colour = translateSpectrumToColour(mb, mm, mh, defaultColour);
+  if (useDefaultColour) result.colour = defaultColour;
+  else result.colour = translateSpectrumToColour(mb, mm, mh, defaultColour);
 
   return result;
  }
