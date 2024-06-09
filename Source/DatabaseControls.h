@@ -63,7 +63,7 @@ public:
 
  bool isKSelected()
  { if (krmsSelect) return krmsSelect->getToggleState(); else return false; }
- 
+
  void setProgressSpinnerVisible(bool shouldBeVisible)
  { if (progressSpinner) progressSpinner->setVisible(shouldBeVisible); }
     //[/UserMethods]

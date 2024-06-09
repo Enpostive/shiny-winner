@@ -17,7 +17,7 @@
 //==============================================================================
 /**
  */
-class SampleDatabasePlayerAudioProcessorEditor  : public juce::AudioProcessorEditor, public juce::Timer
+class SampleDatabasePlayerAudioProcessorEditor  : public juce::AudioProcessorEditor, public juce::Timer, public juce::ChangeListener
 {
 public:
  SampleDatabasePlayerAudioProcessorEditor (SampleDatabasePlayerAudioProcessor&, juce::AudioProcessorValueTreeState &);
@@ -28,18 +28,29 @@ public:
  void resized() override;
  
  void timerCallback() override;
+ void changeListenerCallback(juce::ChangeBroadcaster *source) override;
  
 private:
  typedef juce::AudioProcessorValueTreeState::SliderAttachment SliderAttachment;
  typedef juce::AudioProcessorValueTreeState::ButtonAttachment ButtonAttachment;
  typedef juce::AudioProcessorValueTreeState::ComboBoxAttachment ComboBoxAttachment;
 
+ juce::TooltipWindow tooltipWindow;
+ 
+ int selectedSlot {0};
+
  SampleDatabasePlayerAudioProcessor& audioProcessor;
  juce::AudioProcessorValueTreeState& valueTreeState;
  SampleDatabaseConnection dbConn;
+ SampleDatabaseAccessor dbAccess;
  std::unique_ptr<XDLookAndFeel> lookAndFeel;
  Controls controls;
  DatabaseTableModel listModel;
+ 
+ ColouredScope leftOutputBufferScope;
+ ColouredScope rightOutputBufferScope;
+ SampleBufferSource leftOutputBufferSource;
+ SampleBufferSource rightOutputBufferSource;
 
 // std::vector<std::unique_ptr<juce::Component>> components;
  std::vector<std::unique_ptr<SliderAttachment>> sliderAttach;

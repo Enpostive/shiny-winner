@@ -56,6 +56,9 @@ private:
  sqlite3 *db;
  char *sqlError = 0;
  
+ static bool accessorStatementsPrepared;
+ static bool modifierStatementsPrepared;
+ 
  std::mutex mtx;
 
  void prepare(const juce::String &query, sqlite3_stmt **stmt)
@@ -87,11 +90,14 @@ public:
  {
   std::unique_lock lock(mtx);
   
+  accessorStatementsPrepared = false;
+  modifierStatementsPrepared = false;
+  
   sqlite3_stmt *stmt;
   do
   {
    stmt = sqlite3_next_stmt(db, nullptr);
-   if (stmt) sqlite3_finalize(stmt);
+   if (stmt) dotry(sqlite3_finalize(stmt), SQLITE_OK);
   } while (stmt != nullptr);
   
   dotry(sqlite3_close(db), SQLITE_OK);
@@ -168,7 +174,6 @@ class SampleDatabaseAccessor
  SampleDatabaseConnection &dbConn;
  
  static std::mutex stmtMtx;
- static bool statementsPrepared;
  static sqlite3_stmt *selectAnalysisStatement;
  static sqlite3_stmt *selectUnanalysedRowsStatement;
  static sqlite3_stmt *selectRowIdStatement;
@@ -248,7 +253,7 @@ public:
   
   prepareRowSelect();
 
-  if (!statementsPrepared)
+  if (!dbConn.accessorStatementsPrepared)
   {
    juce::String query = juce::String(SelectRowPartialSQLFront);
    query += SelectRowIdPartialSQLEnd;
@@ -259,7 +264,7 @@ public:
    dbConn.prepare(query, &selectAnalysisStatement);
    
    dbConn.prepare(SelectUnanalysedRowIDSQL, &selectUnanalysedRowsStatement);
-   statementsPrepared = true;
+   dbConn.accessorStatementsPrepared = true;
   }
  }
  
@@ -437,7 +442,6 @@ class SampleDatabaseModifier
  "UPDATE sampleFiles SET analysis = ?1 WHERE rowid = ?2;";
  
  static std::mutex stmtMtx;
- static bool statementsPrepared;
  static sqlite3_stmt *insertRowStatement;
  static sqlite3_stmt *removeRowStatement;
  static sqlite3_stmt *updateCategoryStatement;
@@ -451,13 +455,13 @@ public:
   std::unique_lock lockStmt(stmtMtx, std::defer_lock);
   std::lock(lockConn, lockStmt);
 
-  if (!statementsPrepared)
+  if (!dbConn.modifierStatementsPrepared)
   {
    dbConn.prepare(InsertRowSQL, &insertRowStatement);
    dbConn.prepare(RemoveRowSQL, &removeRowStatement);
    dbConn.prepare(UpdateCategorySQL, &updateCategoryStatement);
    dbConn.prepare(UpdateAnalysisSQL, &updateAnalysisStatement);
-   statementsPrepared = true;
+   dbConn.modifierStatementsPrepared = true;
   }
  }
  

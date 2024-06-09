@@ -109,6 +109,7 @@ public:
  float read(int channel, int pos) override
  {
   jassert(channel < _chCount);
+  if (pos < 0 || pos >= _len) return 0.;
   return buffers[channel][pos];
  }
 };

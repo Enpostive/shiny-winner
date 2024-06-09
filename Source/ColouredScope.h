@@ -418,6 +418,60 @@ public:
 
 
 
+
+class SampleBufferSource : public ScopeDataSource
+{
+ void constrain(int &index)
+ {
+  index = XDDSP::boundary<int>(index, 0, bufLength - 1);
+ }
+ 
+ void prepareIndexes(int &start, int &end)
+ {
+  constrain(start);
+  constrain(end);
+  if (end < start) std::swap(start, end);
+ }
+
+public:
+ float *sampleBuffer {nullptr};
+ int bufLength {0};
+ juce::Colour defaultColour {juce::Colours::white.withBrightness(0.5)};
+ 
+ virtual ScopePoint getRange(int start, int end) override
+ {
+  ScopePoint result = {0., 0., defaultColour};
+  if (sampleBuffer)
+  {
+   prepareIndexes(start, end);
+   result.min = sampleBuffer[start];
+   result.max = sampleBuffer[start];
+
+   for (int i = start + 1; i < end; ++i)
+   {
+    float t = sampleBuffer[i];
+    result.min = std::min(result.min, t);
+    result.max = std::max(result.max, t);
+   }
+   
+  }
+  return result;
+ }
+ 
+ virtual unsigned int getRangeSize() override
+ {
+  return bufLength;
+ }
+};
+
+
+
+
+
+
+
+
+
 class ColouredScope  : public juce::Component
 {
  juce::Image colourBuffer;

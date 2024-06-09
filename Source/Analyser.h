@@ -33,31 +33,35 @@ struct Analysis
  
  juce::String toString()
  {
-  juce::DynamicObject::Ptr json = new juce::DynamicObject();
-  
-  json->setProperty("version", version);
-  json->setProperty("stereo", stereo);
-  json->setProperty("peak", peakdB);
-  json->setProperty("rms", rmsdB);
-  json->setProperty("krms", krmsdB);
-  if (stereo)
+  juce::String str = "";
+  if (valid)
   {
-   if (envMonoLeft) json->setProperty("envLeft", envMonoLeft->toString());
-   else json->setProperty("envLeft", "");
+   juce::DynamicObject::Ptr json = new juce::DynamicObject();
    
-   if (envRight) json->setProperty("envRight", envRight->toString());
-   else json->setProperty("envRight", "");
+   json->setProperty("version", version);
+   json->setProperty("stereo", stereo);
+   json->setProperty("peak", peakdB);
+   json->setProperty("rms", rmsdB);
+   json->setProperty("krms", krmsdB);
+   if (stereo)
+   {
+    if (envMonoLeft) json->setProperty("envLeft", envMonoLeft->toString());
+    else json->setProperty("envLeft", "");
+    
+    if (envRight) json->setProperty("envRight", envRight->toString());
+    else json->setProperty("envRight", "");
+   }
+   else
+   {
+    if (envMonoLeft) json->setProperty("env", envMonoLeft->toString());
+    else json->setProperty("env", "");
+   }
+   
+   juce::var jsonVar(json.get());
+   
+   str = juce::JSON::toString(jsonVar);
+   
   }
-  else
-  {
-   if (envMonoLeft) json->setProperty("env", envMonoLeft->toString());
-   else json->setProperty("env", "");
-  }
-  
-  juce::var jsonVar(json.get());
-  
-  juce::String str = juce::JSON::toString(jsonVar);
-
   return str;
  };
  
@@ -70,17 +74,25 @@ struct Analysis
   
   if (json.hasProperty("version")) version = json["version"];
   else version = 1;
+  if (version > 1) return;
+  if (!json.hasProperty("stereo")) return;
+  if (!json.hasProperty("peak")) return;
+  if (!json.hasProperty("rms")) return;
+  if (!json.hasProperty("krms")) return;
   stereo = json["stereo"];
   peakdB = json["peak"];
   rmsdB = json["rms"];
   krmsdB = json["krms"];
   if (stereo)
   {
+   if (!json.hasProperty("envLeft")) return;
+   if (!json.hasProperty("envRight")) return;
    envMonoLeft.reset(new WaveformEnvelope(json["envLeft"]));
    envRight.reset(new WaveformEnvelope(json["envRight"]));
   }
   else
   {
+   if (!json.hasProperty("env")) return;
    envMonoLeft.reset(new WaveformEnvelope(json["env"]));
    envRight.reset();
   }

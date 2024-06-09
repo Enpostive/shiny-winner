@@ -33,8 +33,7 @@ class DatabaseTableModel : public juce::TableListBoxModel, public juce::Componen
  // Column IDs
  enum
  {
-  StatusColumn = 1,
-  FilePathColumn,
+  FilePathColumn = 1,
   CategoryColumn
  };
  
@@ -48,10 +47,8 @@ class DatabaseTableModel : public juce::TableListBoxModel, public juce::Componen
  {
   int rowNumber {-1};
   int rowid;
-  bool fileError {false};
   juce::File sampleFile;
   int category {0};
-  bool analysisReady {false};
  };
 
  XDDSP::PowerSize cacheSize;
@@ -80,8 +77,6 @@ class DatabaseTableModel : public juce::TableListBoxModel, public juce::Componen
    rowCache[cacheLine].rowid = dbAccess.getRowId();
    rowCache[cacheLine].sampleFile = juce::File(dbAccess.getPath());
    rowCache[cacheLine].category = dbAccess.getCategoryID();
-   rowCache[cacheLine].fileError = !rowCache[cacheLine].sampleFile.hasReadAccess();
-   rowCache[cacheLine].analysisReady = dbAccess.getAnalysisForID(rowCache[cacheLine].rowid).isNotEmpty();
   }
    
   return rowCache[cacheLine];
@@ -137,10 +132,10 @@ public:
    table->setRowHeight(font.getHeight() + 2);
    
    table->getHeader().removeAllColumns();
-   table->getHeader().addColumn("", StatusColumn, 20, 20, 20,
-                                juce::TableHeaderComponent::notResizableOrSortable);
-   table->getHeader().addColumn("File Name", FilePathColumn, 300);
-   table->getHeader().addColumn("Category", CategoryColumn, 150);
+//   table->getHeader().addColumn("", StatusColumn, 20, 20, 20,
+//                                juce::TableHeaderComponent::notResizableOrSortable);
+   table->getHeader().addColumn("File Name", FilePathColumn, 200);
+   table->getHeader().addColumn("Category", CategoryColumn, 100);
   }
   resizeCache();
  }
@@ -215,23 +210,6 @@ public:
   g.setFont(font);
   switch (columnId)
   {
-   case StatusColumn:
-    if (row.fileError)
-    {
-     g.setColour(juce::Colours::red);
-     g.drawText("!",
-                2, 0, width - 4, height,
-                juce::Justification::centredLeft, true);
-    }
-    else if (row.analysisReady)
-    {
-     g.setColour(juce::Colours::green.withBrightness(0.5));
-     g.drawText("~",
-                2, 0, width - 4, height,
-                juce::Justification::centredLeft, true);
-    }
-    break;
-    
    case FilePathColumn:
     g.drawText(row.sampleFile.getFileName(),
                2, 0, width - 4, height,

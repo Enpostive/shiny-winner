@@ -10,16 +10,27 @@
 
 #include <JuceHeader.h>
 #include "PluginParameters.h"
+#include "SampleParameters.h"
 #include "../../Source/SampleDatabaseClasses.h"
-#include "../../Source/Analyser.h"
 #include "DSP.h"
 
 //==============================================================================
 /**
  */
-class SampleDatabasePlayerAudioProcessor  : public juce::AudioProcessor
+class SampleDatabasePlayerAudioProcessor  : public juce::AudioProcessor, public juce::AsyncUpdater, public juce::ChangeBroadcaster
 {
+ static constexpr int NumberOfSlots = 3;
+ 
+ static constexpr float DefaultPlaybackKRMS = -15.0;
+ static constexpr bool DefaultLengthIsTempoSync = true;
+ static constexpr float DefaultLengthMs = 200.;
+ static constexpr float DefaultLengthFrac = 33.;
+ static constexpr float DefaultMasterFadeOut = 30.;
+ 
+ 
 public:
+
+
  //==============================================================================
  SampleDatabasePlayerAudioProcessor();
  ~SampleDatabasePlayerAudioProcessor() override;
@@ -62,21 +73,60 @@ public:
  void getStateInformation (juce::MemoryBlock& destData) override;
  void setStateInformation (const void* data, int sizeInBytes) override;
  
+ void handleAsyncUpdate() override;
+ 
  std::vector<ParameterSpec> paramSpecs;
 
  XDDSP::Parameters dspParam;
  XDDSP::PluginDSP dsp;
  
  std::mutex mtx;
+ 
+ void loadSample(int slot, const juce::String &path);
+ void unloadSample(int slot);
+ void setAnalysis(int slot, const juce::String &analysisString);
+
+ std::vector<float> leftProcessBuffer;
+ std::vector<float> rightProcessBuffer;
+ std::array<SampleParameters, NumberOfSlots> samples;
+ std::vector<std::vector<float>> sampleBuffer;
+ 
+ int lengthOfBuffer()
+ {
+  return static_cast<int>(leftProcessBuffer.size());
+ }
 
 private:
  juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+ 
+ juce::AudioFormatManager audioFormatManager;
+ 
+ bool playingSecondBuffer {false};
+ bool fadingBetweenBuffers {false};
+ std::vector<float> leftPlayBuffer1;
+ std::vector<float> leftPlayBuffer2;
+ std::vector<float> rightPlayBuffer1;
+ std::vector<float> rightPlayBuffer2;
+
+ bool reloadSamples {false};
+ int resultLength {INT_MAX};
+ bool lengthIsTempoSync{DefaultLengthIsTempoSync};
+ float lengthMs {DefaultLengthMs};
+ float lengthFrac {0.01*DefaultLengthFrac};
+ float masterFadeOut {DefaultMasterFadeOut};
+ void recalculateLength();
+ void processSample(int slot);
+ void mainProcess();
+ 
+ float playbackKRMS {DefaultPlaybackKRMS};
  
  // Put private fields in here BEFORE the parameters object, so that they are
  // constructed first and parameters is constructed last.
 
  std::vector<std::unique_ptr<PluginListener>> listeners;
  juce::AudioProcessorValueTreeState parameters;
+ 
+ void connectDSP(int bufferLength);
  //==============================================================================
  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SampleDatabasePlayerAudioProcessor)
 };

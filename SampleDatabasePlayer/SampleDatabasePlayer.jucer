@@ -5,19 +5,12 @@
               companyName="XDMakesMusic" pluginManufacturerCode="Xdmm" pluginCharacteristicsValue="pluginIsSynth,pluginWantsMidiIn">
   <MAINGROUP id="uLkMQl" name="SampleDatabasePlayer">
     <GROUP id="{BC5E7B4E-0EDE-C11F-115F-8961E6808109}" name="Source">
-      <FILE id="MqbLYm" name="Analyser.h" compile="0" resource="0" file="../Source/Analyser.h"/>
-      <FILE id="RXjjZi" name="AudioReaderCache.h" compile="0" resource="0"
-            file="../Source/AudioReaderCache.h"/>
-      <FILE id="yr5i6X" name="ColouredScope.h" compile="0" resource="0" file="../Source/ColouredScope.h"/>
+      <FILE id="s1ncDD" name="SampleAdjuster.h" compile="0" resource="0"
+            file="Source/SampleAdjuster.h"/>
+      <FILE id="i7T35U" name="SampleParameters.h" compile="0" resource="0"
+            file="Source/SampleParameters.h"/>
       <FILE id="TM6wTQ" name="DatabaseTableModel.h" compile="0" resource="0"
             file="Source/DatabaseTableModel.h"/>
-      <FILE id="VVkQH3" name="RMSAnalyser.h" compile="0" resource="0" file="../Source/RMSAnalyser.h"/>
-      <FILE id="fiyFzk" name="SampleDatabaseClasses.cpp" compile="1" resource="0"
-            file="../Source/SampleDatabaseClasses.cpp"/>
-      <FILE id="Ncum5r" name="SampleDatabaseClasses.h" compile="0" resource="0"
-            file="../Source/SampleDatabaseClasses.h"/>
-      <FILE id="tISws2" name="SampleEnvelopeAnalyser.h" compile="0" resource="0"
-            file="../Source/SampleEnvelopeAnalyser.h"/>
       <FILE id="zUMGyF" name="PluginProcessor.cpp" compile="1" resource="0"
             file="Source/PluginProcessor.cpp"/>
       <FILE id="fJIRdL" name="PluginProcessor.h" compile="0" resource="0"
@@ -32,10 +25,21 @@
       <FILE id="GM5Cj5" name="LookAndFeel.h" compile="0" resource="0" file="Source/LookAndFeel.h"/>
       <FILE id="tI01JP" name="DSP.h" compile="0" resource="0" file="Source/DSP.h"/>
     </GROUP>
+    <GROUP id="{7E8D16D8-C64A-E1EB-D4E0-70D7D75BB940}" name="SampleDatabase">
+      <FILE id="MqbLYm" name="Analyser.h" compile="0" resource="0" file="../Source/Analyser.h"/>
+      <FILE id="RXjjZi" name="AudioReaderCache.h" compile="0" resource="0"
+            file="../Source/AudioReaderCache.h"/>
+      <FILE id="yr5i6X" name="ColouredScope.h" compile="0" resource="0" file="../Source/ColouredScope.h"/>
+      <FILE id="VVkQH3" name="RMSAnalyser.h" compile="0" resource="0" file="../Source/RMSAnalyser.h"/>
+      <FILE id="fiyFzk" name="SampleDatabaseClasses.cpp" compile="1" resource="0"
+            file="../Source/SampleDatabaseClasses.cpp"/>
+      <FILE id="Ncum5r" name="SampleDatabaseClasses.h" compile="0" resource="0"
+            file="../Source/SampleDatabaseClasses.h"/>
+      <FILE id="tISws2" name="SampleEnvelopeAnalyser.h" compile="0" resource="0"
+            file="../Source/SampleEnvelopeAnalyser.h"/>
+    </GROUP>
     <GROUP id="{FA6401EE-369C-5297-D5DA-DD4DB6A27845}" name="sqlite3">
-      <FILE id="qWYxfQ" name="sqlite3.c" compile="1" resource="0" file="../Source/sqlite3/sqlite3.c"/>
       <FILE id="CZMJMv" name="sqlite3.h" compile="0" resource="0" file="../Source/sqlite3/sqlite3.h"/>
-      <FILE id="e1jh85" name="sqlite3.o" compile="0" resource="1" file="../Source/sqlite3/sqlite3.o"/>
     </GROUP>
     <GROUP id="{59C94ECF-7462-F920-5CA5-D9A0387DA1E3}" name="XDDSP">
       <FILE id="rIEI8j" name="LICENSE" compile="0" resource="1" file="../Source/XDDSP/LICENSE"/>
@@ -100,7 +104,7 @@
   </MODULES>
   <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1" JUCE_VST3_CAN_REPLACE_VST2="0"/>
   <EXPORTFORMATS>
-    <XCODE_MAC targetFolder="Builds/MacOSX">
+    <XCODE_MAC targetFolder="Builds/MacOSX" extraLinkerFlags="../../../Source/sqlite3/sqlite3.o">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" targetName="SampleDatabasePlayer"/>
         <CONFIGURATION isDebug="0" name="Release" targetName="SampleDatabasePlayer"/>

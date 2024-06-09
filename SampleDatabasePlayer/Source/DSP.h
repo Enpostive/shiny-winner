@@ -84,6 +84,75 @@ namespace XDDSP
   
 
  */
+template <int ChannelCount = 1>
+class Counter : public Component<Counter<ChannelCount>>
+{
+ // Private data members here
+ int count {0};
+ int minimum {0};
+ int maximum {INT_MAX};
+public:
+ static constexpr int Count = ChannelCount;
+ 
+ // Specify your inputs as public members here
+ // This component has no inputs
+ 
+ // Specify your outputs like this
+ Output<Count> signalOut;
+ 
+ // Include a definition for each input in the constructor
+ Counter(Parameters &p) :
+ signalOut(p)
+ {}
+ 
+ void setMinMax(int min, int max)
+ {
+  if (min > max) std::swap(min, max);
+  minimum = min;
+  maximum = max;
+ }
+ 
+ void setMinimum(int min)
+ { setMinMax(min, maximum); }
+ 
+ void setMaximum(int max)
+ { setMinMax(minimum, max); }
+ 
+ void setCounter(int value = 0)
+ { count = value; }
+ 
+ // This function is responsible for clearing the output buffers to a default state when
+ // the component is disabled.
+ void reset()
+ {
+  signalOut.reset();
+ }
+ 
+ // startProcess prepares the component for processing one block and returns the step
+ // size. By default, it returns the entire sampleCount as one big step.
+// int startProcess(int startPoint, int sampleCount)
+// { return std::min(sampleCount, StepSize); }
+
+ // stepProcess is called repeatedly with the start point incremented by step size
+ void stepProcess(int startPoint, int sampleCount)
+ {
+  for (int i = startPoint, s = sampleCount; s--; ++i)
+  {
+   int xi = boundary(count++, minimum, maximum);
+   SampleType x = static_cast<SampleType>(xi);
+   count = std::min(count, maximum);
+   
+   for (int c = 0; c < Count; ++c)
+   {
+    signalOut.buffer(c, i) = x;
+   }
+  }
+ }
+ 
+ // finishProcess is called after the block has been processed
+// void finishProcess()
+// {}
+};
 
 
 
@@ -96,26 +165,92 @@ namespace XDDSP
 class PluginDSP : public Component<PluginDSP>
 {
  // Private data members here
+ int startDelta {-1};
+ int procCount {0};
+ 
+ void proc(int startPoint, int sampleCount)
+ {
+  playbackPosition.process(startPoint, sampleCount);
+  playbackGain.process(startPoint, sampleCount);
+  crossfadeRamp.process(startPoint, sampleCount);
+  crossfader.process(startPoint, sampleCount);
+  amp.process(startPoint, sampleCount);
+ }
+ 
 public:
  static constexpr int Count = 2;
  
- PluginInput<Count> signalIn;
+// PluginInput<Count> signalIn;
+ Counter<2> playbackPosition;
+ Ramp<ControlConstant<2>, ControlConstant<2>> playbackGain;
+ Ramp<ControlConstant<1>, ControlConstant<1>> crossfadeRamp;
+ 
+ SamplePlaybackHead<float, 2> samplePlayHead1;
+ SamplePlaybackHead<float, 2> samplePlayHead2;
+ 
+ Crossfader<
+ Connector<2>,
+ Connector<2>,
+ Connector<1>,
+ MixingLaws::LinearFadeLaw
+ > crossfader;
+ 
+ SimpleGain<Connector<2>, Connector<2>> amp;
+ 
  Connector<Count> signalOut;
  
  PluginDSP(Parameters &p) :
- signalOut({signalIn})
+ playbackPosition(p),
+ playbackGain(p, {1.}, {1.}),
+ crossfadeRamp(p, {0.}, {0.}),
+ samplePlayHead1(playbackPosition.signalOut),
+ samplePlayHead2(playbackPosition.signalOut),
+ crossfader(p, samplePlayHead1, samplePlayHead2, crossfadeRamp.rampOut),
+ amp(p, crossfader.signalOut, playbackGain.rampOut),
+ signalOut({amp.signalOut})
  {}
  
  // This function is responsible for clearing the output buffers to a default state when
  // the component is disabled.
- void reset()
+ void reset() override
  {
+  playbackPosition.reset();
+  playbackGain.reset();
+  crossfadeRamp.reset();
+  crossfader.reset();
+  amp.reset();
+ }
+ 
+ int startProcess(int startPoint, int sampleCount) override
+ {
+  procCount = sampleCount;
+  return sampleCount;
  }
  
  // stepProcess is called repeatedly with the start point incremented by step size
- void stepProcess(int startPoint, int sampleCount)
+ void stepProcess(int startPoint, int sampleCount) override
  {
+  if (startDelta > startPoint && startDelta < startPoint + sampleCount)
+  {
+   playbackPosition.setCounter(startPoint - startDelta);
+   playbackGain.setRampTime(startPoint - startDelta, 1);
+  }
+  proc(startPoint, sampleCount);
  }
  
+ void finishProcess() override
+ {
+  if (startDelta > 0) startDelta -= procCount;
+ }
+ 
+ void noteOn(int posDelta)
+ {
+  startDelta = posDelta;
+ }
 };
+
+
+
+
+
 }

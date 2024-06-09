@@ -113,6 +113,154 @@ juce::AudioProcessorValueTreeState::ParameterLayout SampleDatabasePlayerAudioPro
 
   */
 
+ // =============== SLIDER PARAM ==================
+ 
+ {
+  juce::ParameterID id("playbacklevel", 1);
+  auto attributes = juce::AudioParameterFloatAttributes().withLabel("dB");
+  juce::AudioParameterFloat *param = new juce::AudioParameterFloat(id, "Playback KRMS", juce::NormalisableRange<float>(-30., -0., 0.1), DefaultPlaybackKRMS, attributes);
+  layout.add(std::unique_ptr<juce::AudioParameterFloat>(param));
+ 
+  PluginParameterListener *listener = new PluginParameterListener(param, [&](float newValue)
+  {
+   playbackKRMS = newValue;
+   triggerAsyncUpdate();
+  });
+   
+  listeners.
+  push_back(std::unique_ptr<PluginParameterListener>(listener));
+  param->addListener(listener);
+
+  paramSpecs.push_back(
+  {
+   id,
+   ParameterSpec::Type::Slider
+  });
+ }
+
+
+
+
+
+ {
+  juce::ParameterID id("samplelengthmode", 1);
+  juce::StringArray items {"ms", "% of 1/4 beat"};
+  
+  juce::AudioParameterChoice *param = new juce::AudioParameterChoice(id, "Sample length mode", items, DefaultLengthIsTempoSync ? 1 : 0);
+  layout.add(std::unique_ptr<juce::AudioParameterChoice>(param));
+  
+  PluginParameterListener *listener = new PluginParameterListener(param, [&](float newValue)
+  {
+   lengthIsTempoSync = static_cast<int>(newValue) == 1;
+   recalculateLength();
+   triggerAsyncUpdate();
+  });
+  
+  listeners.
+  push_back(std::unique_ptr<PluginParameterListener>(listener));
+  param->addListener(listener);
+  
+  ParameterSpec pSpec =
+  {
+   id,
+   ParameterSpec::Type::Combo
+  };
+
+  paramSpecs.push_back(pSpec);
+ }
+
+
+
+
+ // =============== Length MS ==================
+ 
+ {
+  juce::ParameterID id("mslength", 1);
+  auto attributes = juce::AudioParameterFloatAttributes().withLabel("ms");
+  juce::AudioParameterFloat *param = new juce::AudioParameterFloat(id, "Length ms", juce::NormalisableRange<float>(10., 10000., 0.01, 0.33333), DefaultLengthMs, attributes);
+  layout.add(std::unique_ptr<juce::AudioParameterFloat>(param));
+ 
+  PluginParameterListener *listener = new PluginParameterListener(param, [&](float newValue)
+  {
+   lengthMs = newValue;
+   recalculateLength();
+   triggerAsyncUpdate();
+  });
+   
+  listeners.
+  push_back(std::unique_ptr<PluginParameterListener>(listener));
+  param->addListener(listener);
+
+  paramSpecs.push_back(
+  {
+   id,
+   ParameterSpec::Type::Slider
+  });
+ }
+
+ 
+ 
+
+
+ // =============== Length fraction ==================
+ 
+ {
+  juce::ParameterID id("fraclength", 1);
+  auto attributes = juce::AudioParameterFloatAttributes().withLabel("%");
+  juce::AudioParameterFloat *param = new juce::AudioParameterFloat(id, "Length sync", juce::NormalisableRange<float>(1., 200., 1.), DefaultLengthFrac, attributes);
+  layout.add(std::unique_ptr<juce::AudioParameterFloat>(param));
+ 
+  PluginParameterListener *listener = new PluginParameterListener(param, [&](float newValue)
+  {
+   lengthFrac = 0.01*newValue;
+   recalculateLength();
+   triggerAsyncUpdate();
+  });
+   
+  listeners.
+  push_back(std::unique_ptr<PluginParameterListener>(listener));
+  param->addListener(listener);
+
+  paramSpecs.push_back(
+  {
+   id,
+   ParameterSpec::Type::Slider
+  });
+ }
+
+
+
+
+
+ // =============== Fade Out ==================
+ 
+ {
+  juce::ParameterID id("fadeout", 1);
+  auto attributes = juce::AudioParameterFloatAttributes().withLabel("ms");
+  juce::AudioParameterFloat *param = new juce::AudioParameterFloat(id, "Fade Out", juce::NormalisableRange<float>(5., 200., 1.), DefaultMasterFadeOut, attributes);
+  layout.add(std::unique_ptr<juce::AudioParameterFloat>(param));
+ 
+  PluginParameterListener *listener = new PluginParameterListener(param, [&](float newValue)
+  {
+   masterFadeOut = newValue;
+   triggerAsyncUpdate();
+  });
+   
+  listeners.
+  push_back(std::unique_ptr<PluginParameterListener>(listener));
+  param->addListener(listener);
+
+  paramSpecs.push_back(
+  {
+   id,
+   ParameterSpec::Type::Slider
+  });
+ }
+
+
+
+
+
  return layout;
 }
 
@@ -132,6 +280,7 @@ AudioProcessor (BusesProperties()
 dsp(dspParam),
 parameters(*this, nullptr, juce::Identifier("SampleDatabasePlayerAudioProcessor"), createParameterLayout())
 {
+ audioFormatManager.registerBasicFormats();
 }
 
 SampleDatabasePlayerAudioProcessor::~SampleDatabasePlayerAudioProcessor()
@@ -244,12 +393,72 @@ bool SampleDatabasePlayerAudioProcessor::isBusesLayoutSupported (const BusesLayo
 }
 #endif
 
+void SampleDatabasePlayerAudioProcessor::connectDSP(int bufferLength)
+{
+ if (fadingBetweenBuffers)
+ {
+  dsp.crossfadeRamp.setRampTime(0, bufferLength);
+  dsp.crossfadeRamp.startIn.setControl(playingSecondBuffer ? 0. : 1.);
+  dsp.crossfadeRamp.endIn.setControl(playingSecondBuffer ? 1. : 0.);
+  fadingBetweenBuffers = false;
+  dsp.samplePlayHead1.connectChannel(0, leftPlayBuffer1.data());
+  dsp.samplePlayHead1.connectChannel(1, rightPlayBuffer1.data());
+  dsp.samplePlayHead1.setLength(leftPlayBuffer1.size());
+  dsp.samplePlayHead2.connectChannel(0, leftPlayBuffer2.data());
+  dsp.samplePlayHead2.connectChannel(1, rightPlayBuffer2.data());
+  dsp.samplePlayHead2.setLength(leftPlayBuffer2.size());
+ }
+ else
+ {
+  dsp.samplePlayHead1.connectChannel(0, playingSecondBuffer ? nullptr : leftPlayBuffer1.data());
+  dsp.samplePlayHead1.connectChannel(1, playingSecondBuffer ? nullptr : rightPlayBuffer1.data());
+  dsp.samplePlayHead1.setLength(playingSecondBuffer ? 0 : leftPlayBuffer1.size());
+  dsp.samplePlayHead2.connectChannel(0, !playingSecondBuffer ? nullptr : leftPlayBuffer2.data());
+  dsp.samplePlayHead2.connectChannel(1, !playingSecondBuffer ? nullptr : rightPlayBuffer2.data());
+  dsp.samplePlayHead2.setLength(!playingSecondBuffer ? 0 : leftPlayBuffer2.size());
+ }
+
+ int maximum = (playingSecondBuffer ?
+                static_cast<int>(leftPlayBuffer2.size()) :
+                static_cast<int>(leftPlayBuffer1.size()));
+ dsp.playbackPosition.setMaximum(maximum);
+
+// dsp.playbackGain.startIn.setControl(1.);
+// dsp.playbackGain.endIn.setControl(1.);
+}
+
+void SampleDatabasePlayerAudioProcessor::recalculateLength()
+{
+ int newLength;
+ if (lengthIsTempoSync)
+ {
+  newLength = static_cast<int>(floor(lengthFrac*dspParam.sampleRate()*60./
+                                        dspParam.getTempo()));
+ }
+ else
+ {
+  newLength = static_cast<int>(floor(lengthMs*dspParam.sampleRate()*0.001));
+ }
+ 
+ for (auto &s: samples)
+ {
+  if (s.fadeOutEnd == resultLength)
+  {
+   s.fadeOutEnd = newLength;
+  }
+  s.sanitiseParameters(newLength);
+ }
+ 
+ resultLength = newLength;
+}
+
 void SampleDatabasePlayerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
  std::unique_lock lock(mtx);
  juce::ScopedNoDenormals noDenormals;
+ connectDSP(buffer.getNumSamples());
  processMIDI(midiMessages);
- dsp.signalIn.connectFloats({buffer.getWritePointer(0), buffer.getWritePointer(1)}, buffer.getNumSamples());
+// dsp.signalIn.connectFloats({buffer.getWritePointer(0), buffer.getWritePointer(1)}, buffer.getNumSamples());
  dsp.process(0, buffer.getNumSamples());
  dsp.signalOut.fastTransfer<float>({buffer.getWritePointer(0), buffer.getWritePointer(1)}, buffer.getNumSamples());
 }
@@ -258,8 +467,9 @@ void SampleDatabasePlayerAudioProcessor::processBlock (juce::AudioBuffer<double>
 {
  std::unique_lock lock(mtx);
  juce::ScopedNoDenormals noDenormals;
+ connectDSP(buffer.getNumSamples());
  processMIDI(midiMessages);
- dsp.signalIn.connectDoubles({buffer.getWritePointer(0), buffer.getWritePointer(1)}, buffer.getNumSamples());
+// dsp.signalIn.connectDoubles({buffer.getWritePointer(0), buffer.getWritePointer(1)}, buffer.getNumSamples());
  dsp.process(0, buffer.getNumSamples());
  dsp.signalOut.fastTransfer<double>({buffer.getWritePointer(0), buffer.getWritePointer(1)}, buffer.getNumSamples());
 }
@@ -270,6 +480,7 @@ void SampleDatabasePlayerAudioProcessor::processMIDI (juce::MidiBuffer &midiMess
  if (playhead)
  {
   double tempo;
+  double newTempo;
   double ppq;
   double seconds;
   /*
@@ -289,17 +500,35 @@ void SampleDatabasePlayerAudioProcessor::processMIDI (juce::MidiBuffer &midiMess
   
   dspParam.getTransportInformation(tempo, ppq, seconds);
   
-  tempo = posInfo.getBpm().orFallback(tempo);
+  newTempo = posInfo.getBpm().orFallback(tempo);
   ppq = posInfo.getPpqPosition().orFallback(ppq);
   seconds = posInfo.getTimeInSeconds().orFallback(seconds);
   
-  dspParam.setTransportInformation(tempo, ppq, seconds);
+  dspParam.setTransportInformation(newTempo, ppq, seconds);
+
+  if (!juce::approximatelyEqual(newTempo, tempo))
+  {
+   recalculateLength();
+   triggerAsyncUpdate();
+  }
  }
  else
  {
 //  debugFile << "No tempo information\n";
   dspParam.clearTransportInformation();
  }
+ 
+ auto it = midiMessages.begin();
+ while (it != midiMessages.end())
+ {
+  juce::MidiMessage message = (*it).getMessage();
+  if (message.isNoteOn())
+  {
+   dsp.noteOn(message.getTimeStamp());
+  }
+  it++;
+ }
+ midiMessages.clear();
 }
 
 //==============================================================================
@@ -340,4 +569,285 @@ void SampleDatabasePlayerAudioProcessor::setStateInformation (const void* data, 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
  return new SampleDatabasePlayerAudioProcessor();
+}
+
+
+
+
+std::vector<float> applyGain(const std::vector<float> &input,
+                             float gaindb)
+{
+ std::vector<float> result;
+ result.reserve(input.size());
+ 
+ const float gain = XDDSP::dB2Linear(gaindb);
+ 
+ for (float s: input) result.push_back(s*gain);
+ 
+ return result;
+}
+
+
+
+
+inline constexpr float safeReciprocal(float x)
+{ return (x == 0) ? 1 : 1./x; }
+
+
+
+
+
+std::vector<float> resample(const std::vector<float> &input,
+                            float inputSampleRate,
+                            float outputSampleRate)
+{
+ std::vector<float> result;
+ 
+ if (inputSampleRate == outputSampleRate)
+ {
+  result = input;
+ }
+ else
+ {
+  float resampleRatio = outputSampleRate/inputSampleRate;
+  float recipRatio = 1./resampleRatio;
+  int newLength = static_cast<int>(floor(static_cast<float>(input.size())*resampleRatio));
+  result.resize(newLength);
+  for (int o = 0; o < newLength; ++o)
+  {
+   const float fo = o;
+   const float fi = fo*recipRatio;
+   XDDSP::IntegerAndFraction<> iAF(fi);
+   float xm1 = iAF.intRep() < 0 ? 0. : input[iAF.intRep() - 1];
+   float x0 = input[iAF.intRep()];
+   float x1 = iAF.intRep() < input.size() - 1 ? input[iAF.intRep() + 1] : 0.;
+   float x2 = iAF.intRep() < input.size() - 2 ? input[iAF.intRep() + 2] : 0.;
+   result[o] = XDDSP::hermite(iAF.fracPart(), xm1, x0, x1, x2);
+  }
+ }
+ 
+ return result;
+}
+
+
+
+void SampleDatabasePlayerAudioProcessor::processSample(int slot)
+{
+ if (samples[slot].active)
+ {
+  XDDSP::BiquadFilterCoefficients highPass(dspParam);
+  XDDSP::BiquadFilterCoefficients paramEQ(dspParam);
+  XDDSP::BiquadFilterCoefficients lowPass(dspParam);
+  XDDSP::BiquadFilterKernel hpFltLeft;
+  XDDSP::BiquadFilterKernel paramFltLeft;
+  XDDSP::BiquadFilterKernel lpFltLeft;
+  XDDSP::BiquadFilterKernel hpFltRight;
+  XDDSP::BiquadFilterKernel paramFltRight;
+  XDDSP::BiquadFilterKernel lpFltRight;
+
+  highPass.setHighPassFilter(samples[slot].highPassHz, 0.707);
+  paramEQ.setParametricFilter(samples[slot].paramHz,
+                              samples[slot].paramQ,
+                              samples[slot].paramGain);
+  lowPass.setLowPassFilter(samples[slot].lowPassHz, 0.707);
+  
+  const float fInStep = safeReciprocal(samples[slot].fadeInLength);
+  const float fOutStep = safeReciprocal(samples[slot].fadeOutLength);
+  const int fadeInEnd = samples[slot].fadeInStart + samples[slot].fadeInLength;
+  const int fadeOutStart = samples[slot].fadeOutEnd - samples[slot].fadeOutLength;
+  
+  const float gain = XDDSP::dB2Linear(samples[slot].playbackLevelKdB - samples[slot].analysis.krmsdB);
+  
+  for (int i = samples[slot].fadeInStart;
+       i < samples[slot].fadeOutEnd;
+       ++i)
+  {
+   int b = i + samples[slot].sampleOffset;
+   if (b > 0 && b < sampleBuffer[samples[slot].leftSlot].size())
+   {
+    float g = gain;
+    if (i < fadeInEnd) g *= fInStep*static_cast<float>(i - samples[slot].fadeInStart);
+    if (i > fadeOutStart) g *= 1. - fOutStep*static_cast<float>(i - fadeOutStart);
+    
+    float l = sampleBuffer[samples[slot].leftSlot][b];
+    float r = sampleBuffer[samples[slot].rightSlot][b];
+    if (samples[slot].highPassEnable)
+    {
+     l = hpFltLeft.process(highPass, l);
+     r = hpFltRight.process(highPass, r);
+    }
+    if (samples[slot].paramEnable)
+    {
+     l = paramFltLeft.process(paramEQ, l);
+     r = paramFltRight.process(paramEQ, r);
+    }
+    if (samples[slot].lowPassEnable)
+    {
+     l = lpFltLeft.process(lowPass, l);
+     r = lpFltRight.process(lowPass, r);
+    }
+    
+    leftProcessBuffer[i] += g*l;
+    rightProcessBuffer[i] += g*r;
+   }
+  }
+ }
+}
+
+
+void SampleDatabasePlayerAudioProcessor::mainProcess()
+{
+ RMSAnalyser rms(dspParam);
+ std::array<float*, 2> buffers {leftProcessBuffer.data(), rightProcessBuffer.data()};
+ MemoryBufferReader reader(buffers, dspParam.sampleRate(), resultLength);
+ float kRMS = XDDSP::linear2dB(rms.calculateKWeightedRMS(reader));
+ 
+ int fadeOutLength = static_cast<int>(masterFadeOut*dspParam.sampleRate()*0.001);
+ float gain = XDDSP::dB2Linear(playbackKRMS - kRMS);
+ if (isinf(gain) || isnan(gain)) gain = 1.;
+ gain = std::min(36.f, gain);
+ 
+ int length = static_cast<int>(leftProcessBuffer.size());
+ const float fInStep = 0.2;
+ const float fOutStep = safeReciprocal(fadeOutLength);
+ int fOutStart = length - fadeOutLength;
+ for (int i = 0; i < length; ++i)
+ {
+  float g = 1.;
+  if (i < 5) g *= fInStep*static_cast<float>(i);
+  if (i > fOutStart) g *= 1. - fOutStep*static_cast<float>(i - fOutStart);
+  g *= g;
+  leftProcessBuffer[i] = gain*g*leftProcessBuffer[i];
+  rightProcessBuffer[i] = gain*g*rightProcessBuffer[i];
+ }
+ leftProcessBuffer[length - 1] = 0.;
+ rightProcessBuffer[length - 1] = 0.;
+}
+
+
+
+
+void SampleDatabasePlayerAudioProcessor::handleAsyncUpdate()
+{
+ leftProcessBuffer.assign(resultLength, 0.);
+ rightProcessBuffer.assign(resultLength, 0.);
+
+ // Load samples into slots
+ if (reloadSamples)
+ {
+  sampleBuffer.clear();
+  for (int i = 0; i < NumberOfSlots; ++i) if (samples[i].active)
+  {
+   juce::File audioFile(samples[i].filePath);
+   if (audioFile.hasReadAccess())
+   {
+    std::unique_ptr<juce::AudioFormatReader> reader {audioFormatManager.createReaderFor(audioFile)};
+    if (reader)
+    {
+     if (reader->numChannels == 2)
+     {
+      // Load stereo file
+      std::vector<float> tmpL(reader->lengthInSamples);
+      std::vector<float> tmpR(reader->lengthInSamples);
+      float *channels[2] = {tmpL.data(), tmpR.data()};
+      reader->read(channels, 2, 0, static_cast<int>(reader->lengthInSamples));
+      sampleBuffer.push_back(resample(tmpL, reader->sampleRate, dspParam.sampleRate()));
+      sampleBuffer.push_back(resample(tmpR, reader->sampleRate, dspParam.sampleRate()));
+      samples[i].leftSlot = static_cast<int>(sampleBuffer.size() - 2);
+      samples[i].rightSlot = static_cast<int>(sampleBuffer.size() - 1);
+     }
+     else
+     {
+      // Load mono file
+      std::vector<float> tmp(reader->lengthInSamples);
+      float *channels[1] = {tmp.data()};
+      reader->read(channels, 1, 0, static_cast<int>(reader->lengthInSamples));
+      sampleBuffer.push_back(resample(tmp, reader->sampleRate, dspParam.sampleRate()));
+      samples[i].leftSlot = static_cast<int>(sampleBuffer.size() - 1);
+      samples[i].rightSlot = samples[i].leftSlot;
+     }
+    }
+   }
+  }
+  reloadSamples = false;
+ }
+ 
+ // Process the resulting sample
+ if (!sampleBuffer.empty())
+ {
+  processSample(0);
+  processSample(1);
+  processSample(2);
+  mainProcess();
+ }
+
+ 
+ 
+ { // CRITICAL SECTION START
+  // Lock the mutex and load the new processed sample
+  std::unique_lock lock(mtx);
+
+  // If we're still crossfading the last buffer, unlock and wait then relock
+  while (fadingBetweenBuffers)
+  {
+   mtx.unlock();
+   juce::Thread::getCurrentThread()->wait(dspParam.bufferSize()/dspParam.sampleRate()*1000.0);
+   mtx.lock();
+  }
+ } // CRITICAL SECTION END
+
+ 
+ 
+ 
+ if (playingSecondBuffer)
+ {
+  leftPlayBuffer1 = leftProcessBuffer;
+  rightPlayBuffer1 = rightProcessBuffer;
+ }
+ else
+ {
+  leftPlayBuffer2 = leftProcessBuffer;
+  rightPlayBuffer2 = rightProcessBuffer;
+ }
+
+ 
+ 
+ 
+ 
+ { // CRITICAL SECTION START
+  // Lock the mutex and load the new processed sample
+  std::unique_lock lock(mtx);
+
+  playingSecondBuffer = !playingSecondBuffer;
+  fadingBetweenBuffers = true;
+ } // CRITICAL SECTION END
+
+ sendChangeMessage();
+}
+
+
+
+
+void SampleDatabasePlayerAudioProcessor::loadSample(int slot,
+                                                    const juce::String &path)
+{
+ jassert(slot >= 0 && slot < 3);
+ samples[slot].filePath = path;
+ samples[slot].active = true;
+ reloadSamples = true;
+}
+
+void SampleDatabasePlayerAudioProcessor::unloadSample(int slot)
+{
+ jassert(slot >= 0 && slot < 3);
+ samples[slot].active = false;
+ reloadSamples = true;
+}
+
+void SampleDatabasePlayerAudioProcessor::setAnalysis(int slot,
+                                                     const juce::String &analysisString)
+{
+ jassert(slot >= 0 && slot < 3);
+ samples[slot].analysis.setFromString(analysisString);
+ samples[slot].playbackLevelKdB = samples[slot].analysis.krmsdB;
 }
