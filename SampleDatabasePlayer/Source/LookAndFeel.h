@@ -73,48 +73,51 @@ class XDLookAndFeel : public juce::LookAndFeel_V4
    g.strokePath(runner, s);
   }
   
-  if (slider.isThreeValue() || !slider.isTwoValue())
+  if (slider.isEnabled())
   {
-   juce::Point<float> nub (slider.isHorizontal() ? sliderPos : startPoint.x,
-                           slider.isHorizontal() ? startPoint.y : sliderPos);
-   
-   juce::Path p;
-   juce::PathStrokeType s(thickness);
-
-   p.startNewSubPath(nub - perp);
-   p.lineTo(nub + perp);
-   g.setColour(juce::Colours::white);
-   g.strokePath(p, s);
-  }
-
-  if (slider.isTwoValue() || slider.isThreeValue())
-  {
+   if (slider.isThreeValue() || !slider.isTwoValue())
    {
-    juce::Point<float> nub (slider.isHorizontal() ? maxSliderPos : startPoint.x,
-                            slider.isHorizontal() ? startPoint.y : maxSliderPos);
-    
-    juce::Path p;
-    juce::PathStrokeType s(thickness);
-
-    p.startNewSubPath(nub - perp + 0.5f*par);
-    p.lineTo(nub - perp);
-    p.lineTo(nub + perp);
-    g.setColour(juce::Colours::white);
-    g.strokePath(p, s);
-   }
-
-   {
-    juce::Point<float> nub (slider.isHorizontal() ? minSliderPos : startPoint.x,
-                            slider.isHorizontal() ? startPoint.y : minSliderPos);
+    juce::Point<float> nub (slider.isHorizontal() ? sliderPos : startPoint.x,
+                            slider.isHorizontal() ? startPoint.y : sliderPos);
     
     juce::Path p;
     juce::PathStrokeType s(thickness);
 
     p.startNewSubPath(nub - perp);
     p.lineTo(nub + perp);
-    p.lineTo(nub + perp - 0.5f*par);
     g.setColour(juce::Colours::white);
     g.strokePath(p, s);
+   }
+
+   if (slider.isTwoValue() || slider.isThreeValue())
+   {
+    {
+     juce::Point<float> nub (slider.isHorizontal() ? maxSliderPos : startPoint.x,
+                             slider.isHorizontal() ? startPoint.y : maxSliderPos);
+     
+     juce::Path p;
+     juce::PathStrokeType s(thickness);
+
+     p.startNewSubPath(nub - perp + 0.5f*par);
+     p.lineTo(nub - perp);
+     p.lineTo(nub + perp);
+     g.setColour(juce::Colours::white);
+     g.strokePath(p, s);
+    }
+
+    {
+     juce::Point<float> nub (slider.isHorizontal() ? minSliderPos : startPoint.x,
+                             slider.isHorizontal() ? startPoint.y : minSliderPos);
+     
+     juce::Path p;
+     juce::PathStrokeType s(thickness);
+
+     p.startNewSubPath(nub - perp);
+     p.lineTo(nub + perp);
+     p.lineTo(nub + perp - 0.5f*par);
+     g.setColour(juce::Colours::white);
+     g.strokePath(p, s);
+    }
    }
   }
  }

@@ -5,6 +5,14 @@
               companyName="XDMakesMusic" pluginManufacturerCode="Xdmm" pluginCharacteristicsValue="pluginIsSynth,pluginWantsMidiIn">
   <MAINGROUP id="uLkMQl" name="SampleDatabasePlayer">
     <GROUP id="{BC5E7B4E-0EDE-C11F-115F-8961E6808109}" name="Source">
+      <FILE id="OUgnJc" name="PiecewiseEnvelopeEditor.h" compile="0" resource="0"
+            file="Source/PiecewiseEnvelopeEditor.h"/>
+      <FILE id="D8v9dH" name="FreezeEditor.cpp" compile="1" resource="0"
+            file="Source/FreezeEditor.cpp"/>
+      <FILE id="RruWXK" name="FreezeEditor.h" compile="0" resource="0" file="Source/FreezeEditor.h"/>
+      <FILE id="fkaY5z" name="SampleEditor.cpp" compile="1" resource="0"
+            file="Source/SampleEditor.cpp"/>
+      <FILE id="NkfFvt" name="SampleEditor.h" compile="0" resource="0" file="Source/SampleEditor.h"/>
       <FILE id="s1ncDD" name="SampleAdjuster.h" compile="0" resource="0"
             file="Source/SampleAdjuster.h"/>
       <FILE id="i7T35U" name="SampleParameters.h" compile="0" resource="0"
@@ -39,6 +47,7 @@
             file="../Source/SampleEnvelopeAnalyser.h"/>
     </GROUP>
     <GROUP id="{FA6401EE-369C-5297-D5DA-DD4DB6A27845}" name="sqlite3">
+      <FILE id="YxpGsC" name="sqlite3.c" compile="1" resource="0" file="../Source/sqlite3/sqlite3.c"/>
       <FILE id="CZMJMv" name="sqlite3.h" compile="0" resource="0" file="../Source/sqlite3/sqlite3.h"/>
     </GROUP>
     <GROUP id="{59C94ECF-7462-F920-5CA5-D9A0387DA1E3}" name="XDDSP">
@@ -104,7 +113,7 @@
   </MODULES>
   <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1" JUCE_VST3_CAN_REPLACE_VST2="0"/>
   <EXPORTFORMATS>
-    <XCODE_MAC targetFolder="Builds/MacOSX" extraLinkerFlags="../../../Source/sqlite3/sqlite3.o">
+    <XCODE_MAC targetFolder="Builds/MacOSX">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" targetName="SampleDatabasePlayer"/>
         <CONFIGURATION isDebug="0" name="Release" targetName="SampleDatabasePlayer"/>

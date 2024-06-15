@@ -51,6 +51,13 @@ private:
  ColouredScope rightOutputBufferScope;
  SampleBufferSource leftOutputBufferSource;
  SampleBufferSource rightOutputBufferSource;
+ 
+ ColouredScope leftEnvelopeScope;
+ ColouredScope rightEnvelopeScope;
+ AnalysisWaveformSource leftEnvelopeSource;
+ AnalysisWaveformSource rightEnvelopeSource;
+ 
+ PiecewiseEnvelopeEditor<decltype(SampleDatabasePlayerAudioProcessor::envelopeData)> envelopeEditor;
 
 // std::vector<std::unique_ptr<juce::Component>> components;
  std::vector<std::unique_ptr<SliderAttachment>> sliderAttach;

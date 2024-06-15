@@ -88,6 +88,7 @@ template <int ChannelCount = 1>
 class Counter : public Component<Counter<ChannelCount>>
 {
  // Private data members here
+ bool counting {false};
  int count {0};
  int minimum {0};
  int maximum {INT_MAX};
@@ -119,12 +120,16 @@ public:
  { setMinMax(minimum, max); }
  
  void setCounter(int value = 0)
- { count = value; }
+ {
+  count = value;
+  counting = true;
+ }
  
  // This function is responsible for clearing the output buffers to a default state when
  // the component is disabled.
  void reset()
  {
+  counting = false;
   signalOut.reset();
  }
  
@@ -138,9 +143,17 @@ public:
  {
   for (int i = startPoint, s = sampleCount; s--; ++i)
   {
-   int xi = boundary(count++, minimum, maximum);
+   int xi;
+   if (counting)
+   {
+    xi = count++;
+    if (count == maximum) counting = false;
+   }
+   else
+   {
+    xi = 0;
+   }
    SampleType x = static_cast<SampleType>(xi);
-   count = std::min(count, maximum);
    
    for (int c = 0; c < Count; ++c)
    {
@@ -166,7 +179,6 @@ class PluginDSP : public Component<PluginDSP>
 {
  // Private data members here
  int startDelta {-1};
- int procCount {0};
  
  void proc(int startPoint, int sampleCount)
  {
@@ -201,7 +213,7 @@ public:
  
  PluginDSP(Parameters &p) :
  playbackPosition(p),
- playbackGain(p, {1.}, {1.}),
+ playbackGain(p, {0.}, {1.}),
  crossfadeRamp(p, {0.}, {0.}),
  samplePlayHead1(playbackPosition.signalOut),
  samplePlayHead2(playbackPosition.signalOut),
@@ -223,29 +235,25 @@ public:
  
  int startProcess(int startPoint, int sampleCount) override
  {
-  procCount = sampleCount;
+  if (startDelta >= startPoint && startDelta < startPoint + sampleCount)
+  {
+   playbackPosition.setCounter(startPoint - startDelta);
+   playbackGain.setRampTime(startPoint - startDelta, 1);
+  }
+  if (startDelta >= 0) startDelta -= sampleCount;
   return sampleCount;
  }
  
  // stepProcess is called repeatedly with the start point incremented by step size
  void stepProcess(int startPoint, int sampleCount) override
  {
-  if (startDelta > startPoint && startDelta < startPoint + sampleCount)
-  {
-   playbackPosition.setCounter(startPoint - startDelta);
-   playbackGain.setRampTime(startPoint - startDelta, 1);
-  }
   proc(startPoint, sampleCount);
- }
- 
- void finishProcess() override
- {
-  if (startDelta > 0) startDelta -= procCount;
  }
  
  void noteOn(int posDelta)
  {
   startDelta = posDelta;
+  playbackGain.startIn.setControl(1.);
  }
 };
 

@@ -16,7 +16,7 @@
 //==============================================================================
 /*
  */
-class SampleAdjuster  : public juce::Component, public juce::Timer, public juce::SettableTooltipClient
+class SampleAdjuster : public juce::Component, public juce::Timer, public juce::SettableTooltipClient
 {
  static constexpr char ThisID[] = "SampleAdjuster";
  static constexpr char FadeStartHandleID[] = "FadeStartHandle";
@@ -206,7 +206,7 @@ public:
   rescale();
 
   waveformPath.clear();
-  if (leftWaveform && rightWaveform && params)
+  if (leftWaveform && rightWaveform && params && l > 0)
   {
    
    waveformPath.startNewSubPath(0.f, 0.f);
@@ -254,7 +254,7 @@ public:
        .translated(0.f, halfHeight));
   g.fillPath(waveformPath, t);
   
-  if (isEnabled())
+  if (isEnabled() && length > 0)
   {
    g.setColour(juce::Colours::yellow);
    g.drawLine(params->fadeInStart/samplesPerPixel, getHeight(),

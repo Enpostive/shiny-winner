@@ -30,7 +30,7 @@ struct Analysis
  float krmsdB {0.};
  std::unique_ptr<WaveformEnvelope> envMonoLeft;
  std::unique_ptr<WaveformEnvelope> envRight;
- 
+  
  juce::String toString()
  {
   juce::String str = "";
@@ -64,9 +64,6 @@ struct Analysis
   }
   return str;
  };
- 
- Analysis()
- {}
  
  void setFromString(const juce::String &str)
  {
@@ -109,6 +106,9 @@ class Analyser
  XDDSP::Parameters param;
  
 public:
+ float clumpingFrequency {200.};
+ float removeThreshold {0.05};
+ 
  Analyser(AudioReaderCache &_reader) :
  reader(_reader)
  {
@@ -126,9 +126,9 @@ public:
   analysis.krmsdB = XDDSP::linear2dB(rmsAnalyser.calculateKWeightedRMS(reader));
   
   WaveformEnvelopeAnalyser envAnal(reader);
-  envAnal.setClumpingFrequency(200.);
+  envAnal.setClumpingFrequency(clumpingFrequency);
   envAnal.setRefine(12);
-  envAnal.setRemoveThreshold(0.05);
+  envAnal.setRemoveThreshold(removeThreshold);
   envAnal.checkShouldCancel = shouldExit;
 
   analysis.envMonoLeft.reset(envAnal.generateEnvelope(0));

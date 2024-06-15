@@ -14,10 +14,52 @@
 #include "../../Source/SampleDatabaseClasses.h"
 #include "DSP.h"
 
+
+
+
+class ProcessorAnalyserThread : public juce::Thread
+{
+public:
+ static constexpr float ClumpingFrequencyDefault = 200.;
+ static constexpr float RemoveThresholdDefault = 0.05;
+ 
+ float clumpingFrequency {ClumpingFrequencyDefault};
+ float removeThreshold {RemoveThresholdDefault};
+
+ std::unique_ptr<MemoryBufferReader> reader {nullptr};
+ Analysis *resultsHolder {nullptr};
+ std::function<void ()> onFinish;
+
+
+ ProcessorAnalyserThread() :
+ juce::Thread("Foreground analyser thread")
+ {}
+ 
+ void run()
+ {
+  if (reader)
+  {
+   Analyser analyser(*reader);
+   
+   analyser.clumpingFrequency = clumpingFrequency;
+   analyser.removeThreshold = removeThreshold;
+   
+   if (resultsHolder)
+   {
+    analyser.doAnalysis(*resultsHolder, [&]() { return threadShouldExit(); });
+    if (onFinish && !threadShouldExit()) onFinish();
+   }
+  }
+ }
+};
+
+
+
+
 //==============================================================================
 /**
  */
-class SampleDatabasePlayerAudioProcessor  : public juce::AudioProcessor, public juce::AsyncUpdater, public juce::ChangeBroadcaster
+class SampleDatabasePlayerAudioProcessor  : public juce::AudioProcessor, public juce::AsyncUpdater, public juce::ChangeBroadcaster, public XDDSP::PiecewiseEnvelopeListener
 {
  static constexpr int NumberOfSlots = 3;
  
@@ -26,6 +68,7 @@ class SampleDatabasePlayerAudioProcessor  : public juce::AudioProcessor, public 
  static constexpr float DefaultLengthMs = 200.;
  static constexpr float DefaultLengthFrac = 33.;
  static constexpr float DefaultMasterFadeOut = 30.;
+ static constexpr float DefaultReshapeAmount = 0.;
  
  
 public:
@@ -82,12 +125,17 @@ public:
  
  std::mutex mtx;
  
- void loadSample(int slot, const juce::String &path);
+ void loadSample(int slot, const juce::String &path, float kRMSdB);
  void unloadSample(int slot);
- void setAnalysis(int slot, const juce::String &analysisString);
+ void setFreeze(bool shouldFreeze);
+ void analyseFrozenSampleAgain();
 
  std::vector<float> leftProcessBuffer;
  std::vector<float> rightProcessBuffer;
+ std::vector<float> leftFreezeBuffer;
+ std::vector<float> rightFreezeBuffer;
+ const bool &isFrozen {frozen};
+ Analysis freezeAnalysis;
  std::array<SampleParameters, NumberOfSlots> samples;
  std::vector<std::vector<float>> sampleBuffer;
  
@@ -96,7 +144,27 @@ public:
   return static_cast<int>(leftProcessBuffer.size());
  }
 
+ float freezeParametersLoadedFromState {false};
+ ProcessorAnalyserThread freezeAnalyseThread;
+ float reshapeAmount {DefaultReshapeAmount};
+ 
+ XDDSP::PiecewiseEnvelopeData<10, 10> envelopeData;
+ virtual void piecewiseEnvelopeChanged() override;
+ 
 private:
+ 
+ static const juce::Identifier PresetDataIdentifier;
+ static const juce::Identifier SampleIdentifier1;
+ static const juce::Identifier SampleIdentifier2;
+ static const juce::Identifier SampleIdentifier3;
+ static const juce::Identifier ClumpingFrequencyIdentifier;
+ static const juce::Identifier RemoveThresholdIdentifier;
+ static const juce::Identifier AnalysisIdentifier;
+ static const juce::Identifier EnvelopeIdentifier;
+ static const juce::Identifier ReshapeAmountIdentifier;
+
+ 
+ 
  juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
  
  juce::AudioFormatManager audioFormatManager;
@@ -109,14 +177,23 @@ private:
  std::vector<float> rightPlayBuffer2;
 
  bool reloadSamples {false};
- int resultLength {INT_MAX};
- bool lengthIsTempoSync{DefaultLengthIsTempoSync};
+ bool initFromSavedState {false};
+ bool loadParametersFromSavedState {false};
+ int userChosenLength {INT_MAX};
+ bool lengthIsTempoSync {DefaultLengthIsTempoSync};
  float lengthMs {DefaultLengthMs};
  float lengthFrac {0.01*DefaultLengthFrac};
  float masterFadeOut {DefaultMasterFadeOut};
  void recalculateLength();
+ void doReloadSamples();
  void processSample(int slot);
  void mainProcess();
+ void processFade();
+
+ bool frozen {false};
+ void initFreezeThread();
+ void freezeProcess();
+ void beginFreeze();
  
  float playbackKRMS {DefaultPlaybackKRMS};
  

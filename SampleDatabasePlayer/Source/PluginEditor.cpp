@@ -13,7 +13,8 @@
 SampleDatabasePlayerAudioProcessorEditor::SampleDatabasePlayerAudioProcessorEditor (SampleDatabasePlayerAudioProcessor& p, juce::AudioProcessorValueTreeState &vts)
 : AudioProcessorEditor (&p), audioProcessor (p), valueTreeState(vts),
 dbAccess(dbConn),
-listModel(dbConn)
+listModel(dbConn),
+envelopeEditor(audioProcessor.envelopeData)
 {
  std::unique_lock lock(audioProcessor.mtx);
  juce::Slider::RotaryParameters rotaryParam;
@@ -27,7 +28,7 @@ listModel(dbConn)
  addAndMakeVisible(controls);
  controls.setTopLeftPosition(0, 0);
  
- listModel.connectToTable(&controls.sampleList());
+ listModel.connectToTable(&controls.getEditor().sampleList());
  
  for (const ParameterSpec &pS : p.paramSpecs)
  {
@@ -89,44 +90,45 @@ listModel(dbConn)
  leftOutputBufferScope.fillEnable = false;
  rightOutputBufferScope.fillEnable = false;
 */
- leftOutputBufferScope.setBounds(0, 420, 600, 90);
- rightOutputBufferScope.setBounds(0, 510, 600, 90);
+ leftOutputBufferScope.setBounds(8, 420, 584, 90);
+ rightOutputBufferScope.setBounds(8, 510, 584, 90);
   
  setSize (controls.getWidth(), controls.getHeight());
  
  listModel.onRowSelected = [&](int rowid)
  {
   dbAccess.selectRowId(rowid);
-  audioProcessor.loadSample(selectedSlot, dbAccess.getPath());
-  audioProcessor.setAnalysis(selectedSlot, dbAccess.getAnalysisForID(rowid));
+  Analysis analysis;
+  analysis.setFromString(dbAccess.getAnalysisForID(rowid));
+  audioProcessor.loadSample(selectedSlot, dbAccess.getPath(), analysis.krmsdB);
   audioProcessor.triggerAsyncUpdate();
  };
  
- controls.onUnload = [&]()
+ controls.getEditor().onUnload = [&]()
  {
   audioProcessor.unloadSample(selectedSlot);
   audioProcessor.triggerAsyncUpdate();
  };
  
- controls.onSlotSelected = [&](int selected)
+ controls.getEditor().onSlotSelected = [&](int selected)
  {
   selectedSlot = selected;
   changeListenerCallback(&audioProcessor);
  };
 
- controls.onSearchStringChanged = [&](const juce::String &term)
+ controls.getEditor().onSearchStringChanged = [&](const juce::String &term)
  {
   if (term.isNotEmpty()) listModel.setSearchTerm(term);
   else listModel.resetSearch();
  };
  
- controls.addFilterItem("No filter", -1);
+ controls.getEditor().addFilterItem("No filter", -1);
  for (auto i: dbConn.categories)
  {
-  controls.addFilterItem(i.second, i.first);
+  controls.getEditor().addFilterItem(i.second, i.first);
  }
 
- controls.onFilterChange = [&](int categoryIDSelected)
+ controls.getEditor().onFilterChange = [&](int categoryIDSelected)
  {
   if (categoryIDSelected == -1)
   {
@@ -138,12 +140,38 @@ listModel(dbConn)
   }
  };
  
- controls.getAdjuster()->onUpdate = [&]()
+ controls.getEditor().getAdjuster()->onUpdate = [&]()
  {
   audioProcessor.triggerAsyncUpdate();
  };
  
+ controls.getFreezeEditor().resetParameters(ProcessorAnalyserThread::ClumpingFrequencyDefault,
+                                            ProcessorAnalyserThread::RemoveThresholdDefault,
+                                            audioProcessor.reshapeAmount);
+ controls.getFreezeEditor().onClumpingFrequencyChange = [&](float clump)
+ {
+  audioProcessor.freezeAnalyseThread.clumpingFrequency = clump;
+  audioProcessor.analyseFrozenSampleAgain();
+ };
+ 
+ controls.getFreezeEditor().onRemoveThresholdChange = [&](float remThresh)
+ {
+  audioProcessor.freezeAnalyseThread.removeThreshold = remThresh;
+  audioProcessor.analyseFrozenSampleAgain();
+ };
+ 
+ controls.getFreezeEditor().onReshapeAmountChange = [&](float reshape)
+ {
+  audioProcessor.reshapeAmount = reshape;
+  audioProcessor.triggerAsyncUpdate();
+ };
+ 
+ controls.getFreezeEditor().addAndMakeVisible(envelopeEditor);
+ envelopeEditor.setBounds(8, 180, 584, 60);
+ envelopeEditor.setGrid(0);
+ 
  audioProcessor.addChangeListener(this);
+ audioProcessor.triggerAsyncUpdate();
  // If you have animated components, uncomment this line
  // startTimerHz(30);
 }
@@ -166,19 +194,29 @@ void SampleDatabasePlayerAudioProcessorEditor::timerCallback()
 
 void SampleDatabasePlayerAudioProcessorEditor::changeListenerCallback(juce::ChangeBroadcaster *source)
 {
- int lSlot = audioProcessor.samples[selectedSlot].leftSlot;
- int rSlot = audioProcessor.samples[selectedSlot].rightSlot;
- if (audioProcessor.samples[selectedSlot].active &&
-     audioProcessor.sampleBuffer.size() > 0)
+ if (audioProcessor.freezeParametersLoadedFromState)
  {
-  controls.connect(audioProcessor.sampleBuffer[lSlot],
-                   audioProcessor.sampleBuffer[rSlot],
-                   audioProcessor.samples[selectedSlot],
-                   audioProcessor.lengthOfBuffer());
+  audioProcessor.freezeParametersLoadedFromState = false;
+  controls.getFreezeEditor().resetParameters(audioProcessor.freezeAnalyseThread.clumpingFrequency,
+                                             audioProcessor.freezeAnalyseThread.removeThreshold,
+                                             audioProcessor.reshapeAmount);
  }
- else
+ 
  {
-  controls.disconnect(audioProcessor.lengthOfBuffer());
+  int lSlot = audioProcessor.samples[selectedSlot].leftSlot;
+  int rSlot = audioProcessor.samples[selectedSlot].rightSlot;
+  if (audioProcessor.samples[selectedSlot].active &&
+      audioProcessor.sampleBuffer.size() > 0)
+  {
+   controls.getEditor().connect(audioProcessor.sampleBuffer[lSlot],
+                                audioProcessor.sampleBuffer[rSlot],
+                                audioProcessor.samples[selectedSlot],
+                                audioProcessor.lengthOfBuffer());
+  }
+  else
+  {
+   controls.getEditor().disconnect(audioProcessor.lengthOfBuffer());
+  }
  }
 
  leftOutputBufferSource.sampleBuffer = audioProcessor.leftProcessBuffer.data();
@@ -193,6 +231,22 @@ void SampleDatabasePlayerAudioProcessorEditor::changeListenerCallback(juce::Chan
  }
  leftOutputBufferScope.repaint();
  rightOutputBufferScope.repaint();
+ 
+ if (audioProcessor.isFrozen)
+ {
+  int size = static_cast<int>(audioProcessor.leftFreezeBuffer.size());
+  controls.getFreezeEditor().leftWaveformSource.sampleBuffer = audioProcessor.leftFreezeBuffer.data();
+  controls.getFreezeEditor().leftWaveformSource.bufLength = size;
+  controls.getFreezeEditor().rightWaveformSource.sampleBuffer = audioProcessor.rightFreezeBuffer.data();
+  controls.getFreezeEditor().rightWaveformSource.bufLength = size;
+  controls.getFreezeEditor().leftEnvelopeSource.env = audioProcessor.freezeAnalysis.envMonoLeft.get();
+  controls.getFreezeEditor().leftEnvelopeSource.setWindowSize(size);
+  controls.getFreezeEditor().rightEnvelopeSource.env = audioProcessor.freezeAnalysis.envRight.get();
+  controls.getFreezeEditor().rightEnvelopeSource.setWindowSize(size);
+  controls.getFreezeEditor().updateScopes();
+  
+  envelopeEditor.setLength(size);
+ }
 }
 
 //==============================================================================

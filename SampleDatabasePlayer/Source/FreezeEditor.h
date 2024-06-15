@@ -21,8 +21,8 @@
 
 //[Headers]     -- You can add your own extra header files here --
 #include <JuceHeader.h>
-#include "SampleEditor.h"
-#include "FreezeEditor.h"
+#include "PiecewiseEnvelopeEditor.h"
+#include "../../Source/ColouredScope.h"
 //[/Headers]
 
 
@@ -35,30 +35,32 @@
     Describe your class and how it works here!
                                                                     //[/Comments]
 */
-class Controls  : public juce::Component,
-                  public juce::Slider::Listener,
-                  public juce::ComboBox::Listener,
-                  public juce::Button::Listener
+class FreezeEditor  : public juce::Component,
+                      public juce::Slider::Listener
 {
 public:
     //==============================================================================
-    Controls ();
-    ~Controls() override;
+    FreezeEditor ();
+    ~FreezeEditor() override;
 
     //==============================================================================
     //[UserMethods]     -- You can add your own custom methods in this section.
- SampleEditor& getEditor()
- { return *sampleEditor; }
+ SampleBufferSource leftWaveformSource;
+ SampleBufferSource rightWaveformSource;
+ AnalysisWaveformSource leftEnvelopeSource;
+ AnalysisWaveformSource rightEnvelopeSource;
 
- FreezeEditor& getFreezeEditor()
- { return *freezeEditor; }
+ void updateScopes();
+ void resetParameters(float clump, float remove, float reshape);
+
+ std::function<void (float)> onClumpingFrequencyChange;
+ std::function<void (float)> onRemoveThresholdChange;
+ std::function<void (float)> onReshapeAmountChange;
     //[/UserMethods]
 
     void paint (juce::Graphics& g) override;
     void resized() override;
     void sliderValueChanged (juce::Slider* sliderThatWasMoved) override;
-    void comboBoxChanged (juce::ComboBox* comboBoxThatHasChanged) override;
-    void buttonClicked (juce::Button* buttonThatWasClicked) override;
 
 
 
@@ -67,20 +69,20 @@ private:
     //[/UserVariables]
 
     //==============================================================================
+    std::unique_ptr<ColouredScope> leftWaveformScope;
+    std::unique_ptr<ColouredScope> rightWaveformScope;
+    std::unique_ptr<ColouredScope> leftEnvelopeScope;
+    std::unique_ptr<ColouredScope> rightEnvelopeScope;
     std::unique_ptr<juce::Label> juce__label;
-    std::unique_ptr<juce::Slider> playbacklevel;
-    std::unique_ptr<juce::ComboBox> samplelengthmode;
-    std::unique_ptr<juce::Slider> mslength;
-    std::unique_ptr<juce::Slider> fraclength;
-    std::unique_ptr<juce::Slider> fadeout;
+    std::unique_ptr<juce::Slider> clumpingFrequency;
     std::unique_ptr<juce::Label> juce__label2;
-    std::unique_ptr<SampleEditor> sampleEditor;
-    std::unique_ptr<juce::ToggleButton> freeze;
-    std::unique_ptr<FreezeEditor> freezeEditor;
+    std::unique_ptr<juce::Slider> removeThreshold;
+    std::unique_ptr<juce::Label> juce__label3;
+    std::unique_ptr<juce::Slider> reshapeAmount;
 
 
     //==============================================================================
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Controls)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (FreezeEditor)
 };
 
 //[EndFile] You can add extra defines here...

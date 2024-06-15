@@ -19,7 +19,7 @@ class WaveformEnvelopeAnalyser;
 class WaveformEnvelope
 {
  friend class WaveformEnvelopeAnalyser;
- 
+
 public:
  struct Maxima
  {
@@ -28,7 +28,6 @@ public:
  };
  
 private:
- float sampleRate;
  std::vector<Maxima> wMaxima;
  float wPeakMaxima {0.};
  int wPeakTime {0};
@@ -130,9 +129,6 @@ public:
   return maxima[im1].amplitude + delta*fraction;
  }
  
- float amplitudeAtTime(float sec) const
- { return amplitudeAtSample(sec*sampleRate); }
- 
  juce::String toString() const
  {
   juce::String stringRep;
@@ -204,7 +200,6 @@ public:
  {
   int _refine = refine;
   std::unique_ptr<WaveformEnvelope> env {new WaveformEnvelope()};
-  env->sampleRate = sampleRate;
   
   int count = static_cast<int>(reader.lengthInSamples);
   
@@ -240,7 +235,7 @@ public:
   }
   // ===========================================================
   // Second pass
-  // Delete envelope points which have higher pointson both sides that are within
+  // Delete envelope points which have higher points on both sides that are within
   // clumping distance
   if (_refine > 0)
   {
@@ -367,3 +362,4 @@ public:
   return env.release();
  }
 };
+
