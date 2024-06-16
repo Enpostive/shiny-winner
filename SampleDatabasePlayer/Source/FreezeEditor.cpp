@@ -116,6 +116,17 @@ FreezeEditor::FreezeEditor ()
 
     reshapeAmount->setBounds (0, 264, 238, 24);
 
+    analysisFeedback.reset (new juce::Label ("analysisFeedback",
+                                             juce::String()));
+    addAndMakeVisible (analysisFeedback.get());
+    analysisFeedback->setFont (juce::Font (15.00f, juce::Font::plain).withTypefaceStyle ("Regular"));
+    analysisFeedback->setJustificationType (juce::Justification::centredRight);
+    analysisFeedback->setEditable (false, false, false);
+    analysisFeedback->setColour (juce::TextEditor::textColourId, juce::Colours::black);
+    analysisFeedback->setColour (juce::TextEditor::backgroundColourId, juce::Colour (0x00000000));
+
+    analysisFeedback->setBounds (368, 128, 230, 24);
+
 
     //[UserPreSize]
     //[/UserPreSize]
@@ -173,6 +184,7 @@ FreezeEditor::~FreezeEditor()
     removeThreshold = nullptr;
     juce__label3 = nullptr;
     reshapeAmount = nullptr;
+    analysisFeedback = nullptr;
 
 
     //[Destructor]. You can add your own custom destruction code here..
@@ -320,6 +332,11 @@ BEGIN_JUCER_METADATA
           max="100.0" int="1.0" style="LinearHorizontal" textBoxPos="TextBoxLeft"
           textBoxEditable="1" textBoxWidth="80" textBoxHeight="20" skewFactor="1.0"
           needsCallback="1"/>
+  <LABEL name="analysisFeedback" id="1b1fa3cf673d21fe" memberName="analysisFeedback"
+         virtualName="" explicitFocusOrder="0" pos="368 128 230 24" edTextCol="ff000000"
+         edBkgCol="0" labelText="" editableSingleClick="0" editableDoubleClick="0"
+         focusDiscardsChanges="0" fontname="Default font" fontsize="15.0"
+         kerning="0.0" bold="0" italic="0" justification="34"/>
 </JUCER_COMPONENT>
 
 END_JUCER_METADATA

@@ -56,6 +56,9 @@ public:
  std::function<void (float)> onClumpingFrequencyChange;
  std::function<void (float)> onRemoveThresholdChange;
  std::function<void (float)> onReshapeAmountChange;
+ 
+ juce::Label& getAnalysisFeedbackLabel()
+ { return *analysisFeedback; }
     //[/UserMethods]
 
     void paint (juce::Graphics& g) override;
@@ -79,6 +82,7 @@ private:
     std::unique_ptr<juce::Slider> removeThreshold;
     std::unique_ptr<juce::Label> juce__label3;
     std::unique_ptr<juce::Slider> reshapeAmount;
+    std::unique_ptr<juce::Label> analysisFeedback;
 
 
     //==============================================================================

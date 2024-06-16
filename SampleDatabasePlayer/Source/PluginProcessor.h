@@ -19,6 +19,9 @@
 
 class ProcessorAnalyserThread : public juce::Thread
 {
+ static constexpr float TimingRatio = (static_cast<float>(std::chrono::steady_clock::period::num)/
+                                       static_cast<float>(std::chrono::steady_clock::period::den));
+ 
 public:
  static constexpr float ClumpingFrequencyDefault = 200.;
  static constexpr float RemoveThresholdDefault = 0.05;
@@ -30,6 +33,7 @@ public:
  Analysis *resultsHolder {nullptr};
  std::function<void ()> onFinish;
 
+ float timeLastAnalysisSeconds {-1.};
 
  ProcessorAnalyserThread() :
  juce::Thread("Foreground analyser thread")
@@ -46,7 +50,12 @@ public:
    
    if (resultsHolder)
    {
+    auto startTime = std::chrono::steady_clock::now();
     analyser.doAnalysis(*resultsHolder, [&]() { return threadShouldExit(); });
+    auto endTime = std::chrono::steady_clock::now();
+    
+    timeLastAnalysisSeconds = (endTime - startTime).count()*TimingRatio;
+    
     if (onFinish && !threadShouldExit()) onFinish();
    }
   }

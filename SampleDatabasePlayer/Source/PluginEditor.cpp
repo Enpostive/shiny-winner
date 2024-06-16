@@ -245,6 +245,8 @@ void SampleDatabasePlayerAudioProcessorEditor::changeListenerCallback(juce::Chan
   controls.getFreezeEditor().rightEnvelopeSource.setWindowSize(size);
   controls.getFreezeEditor().updateScopes();
   
+  controls.getFreezeEditor().getAnalysisFeedbackLabel().setText(juce::String("Finished in ") + juce::String(audioProcessor.freezeAnalyseThread.timeLastAnalysisSeconds, 5), juce::dontSendNotification);
+  
   envelopeEditor.setLength(size);
  }
 }
