@@ -113,6 +113,7 @@ envelopeEditor(audioProcessor.envelopeData)
  controls.getEditor().onSlotSelected = [&](int selected)
  {
   selectedSlot = selected;
+  audioProcessor.changeSelectionInEditor = true;
   changeListenerCallback(&audioProcessor);
  };
 
@@ -203,6 +204,11 @@ void SampleDatabasePlayerAudioProcessorEditor::changeListenerCallback(juce::Chan
  }
  
  {
+  if (audioProcessor.changeSelectionInEditor)
+  {
+   audioProcessor.changeSelectionInEditor = false;
+   listModel.selectRowWithPath(audioProcessor.samples[selectedSlot].filePath);
+  }
   int lSlot = audioProcessor.samples[selectedSlot].leftSlot;
   int rSlot = audioProcessor.samples[selectedSlot].rightSlot;
   if (audioProcessor.samples[selectedSlot].active &&

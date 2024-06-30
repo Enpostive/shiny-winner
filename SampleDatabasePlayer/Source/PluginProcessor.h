@@ -160,6 +160,8 @@ public:
  XDDSP::PiecewiseEnvelopeData<10, 10> envelopeData;
  virtual void piecewiseEnvelopeChanged() override;
  
+ bool changeSelectionInEditor {false};
+ 
 private:
  
  static const juce::Identifier PresetDataIdentifier;

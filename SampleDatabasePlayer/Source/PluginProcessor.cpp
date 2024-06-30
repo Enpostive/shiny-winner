@@ -616,6 +616,7 @@ void SampleDatabasePlayerAudioProcessor::setStateInformation (const void* data, 
    initFromSavedState = true;
    reloadSamples = true;
    loadParametersFromSavedState = true;
+   changeSelectionInEditor = true;
    juce::ValueTree p = juce::ValueTree::fromXml(*xmlState);
    juce::ValueTree strings = p.getChildWithName(PresetDataIdentifier);
    if (strings.isValid())
@@ -1011,6 +1012,7 @@ void SampleDatabasePlayerAudioProcessor::setFreeze(bool shouldFreeze)
   else
   {
    frozen = false;
+   changeSelectionInEditor = true;
   }
   triggerAsyncUpdate();
  }

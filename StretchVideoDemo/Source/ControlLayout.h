@@ -21,8 +21,7 @@
 
 //[Headers]     -- You can add your own extra header files here --
 #include <JuceHeader.h>
-#include "PiecewiseEnvelopeEditor.h"
-#include "../../Source/ColouredScope.h"
+#include "Zoom.h"
 //[/Headers]
 
 
@@ -35,30 +34,22 @@
     Describe your class and how it works here!
                                                                     //[/Comments]
 */
-class FreezeEditor  : public juce::Component,
-                      public juce::Slider::Listener
+class ControlLayout  : public juce::Component,
+                       public juce::Slider::Listener
 {
 public:
     //==============================================================================
-    FreezeEditor ();
-    ~FreezeEditor() override;
+    ControlLayout ();
+    ~ControlLayout() override;
 
     //==============================================================================
     //[UserMethods]     -- You can add your own custom methods in this section.
- SampleBufferSource leftWaveformSource;
- SampleBufferSource rightWaveformSource;
- AnalysisWaveformSource leftEnvelopeSource;
- AnalysisWaveformSource rightEnvelopeSource;
-
- void updateScopes();
- void resetParameters(float clump, float remove, float reshape);
+ void resetParameters(float clump, float remove, int refine);
 
  std::function<void (float)> onClumpingFrequencyChange;
  std::function<void (float)> onRemoveThresholdChange;
- std::function<void (float)> onReshapeAmountChange;
-
- juce::Label& getAnalysisFeedbackLabel()
- { return *analysisFeedback; }
+ std::function<void (int)> onRefineParamChange;
+ std::function<void (float)> onGuideLevelChange;
     //[/UserMethods]
 
     void paint (juce::Graphics& g) override;
@@ -72,21 +63,18 @@ private:
     //[/UserVariables]
 
     //==============================================================================
-    std::unique_ptr<ColouredScope> leftWaveformScope;
-    std::unique_ptr<ColouredScope> rightWaveformScope;
-    std::unique_ptr<ColouredScope> leftEnvelopeScope;
-    std::unique_ptr<ColouredScope> rightEnvelopeScope;
     std::unique_ptr<juce::Label> juce__label;
     std::unique_ptr<juce::Slider> clumpingFrequency;
     std::unique_ptr<juce::Label> juce__label2;
     std::unique_ptr<juce::Slider> removeThreshold;
     std::unique_ptr<juce::Label> juce__label3;
-    std::unique_ptr<juce::Slider> reshapeAmount;
-    std::unique_ptr<juce::Label> analysisFeedback;
+    std::unique_ptr<juce::Slider> refineParam;
+    std::unique_ptr<juce::Label> juce__label4;
+    std::unique_ptr<juce::Slider> guideLevel;
 
 
     //==============================================================================
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (FreezeEditor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ControlLayout)
 };
 
 //[EndFile] You can add extra defines here...

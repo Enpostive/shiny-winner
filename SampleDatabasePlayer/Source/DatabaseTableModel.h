@@ -153,6 +153,18 @@ public:
   refreshTable();
  }
  
+ void selectRowWithPath(const juce::String &path)
+ {
+  int rowNumber = dbAccess.getRowNumberFromPath(path);
+  if (rowNumber > -1)
+  {
+   juce::SparseSet<int> selection;
+   selection.addRange({rowNumber - 1, rowNumber});
+   table->setSelectedRows(selection, juce::dontSendNotification);
+   table->scrollToEnsureRowIsOnscreen(rowNumber - 1);
+  }
+ }
+ 
  void resetSearch()
  {
   dbAccess.resetSearch();

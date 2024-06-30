@@ -108,6 +108,7 @@ class Analyser
 public:
  float clumpingFrequency {200.};
  float removeThreshold {0.05};
+ int refineParam {12};
  
  Analyser(AudioReaderCache &_reader) :
  reader(_reader)
@@ -127,7 +128,7 @@ public:
   
   WaveformEnvelopeAnalyser envAnal(reader);
   envAnal.setClumpingFrequency(clumpingFrequency);
-  envAnal.setRefine(12);
+  envAnal.setRefine(refineParam);
   envAnal.setRemoveThreshold(removeThreshold);
   envAnal.checkShouldCancel = shouldExit;
 
@@ -161,6 +162,14 @@ public:
 class AnalyserThread : public juce::Thread
 {
 public:
+ static constexpr float ClumpingFrequencyDefault = 200.;
+ static constexpr float RemoveThresholdDefault = 0.05;
+ 
+ float clumpingFrequency {ClumpingFrequencyDefault};
+ float removeThreshold {RemoveThresholdDefault};
+ int refineParam {12};
+
+
  juce::AudioFormatReader *reader;
  Analysis *resultsHolder {nullptr};
  std::function<void ()> onFinish;
@@ -175,11 +184,15 @@ public:
   JuceFileReaderCache cache(*reader);
   Analyser analyser(cache);
   
+  analyser.clumpingFrequency = clumpingFrequency;
+  analyser.removeThreshold = removeThreshold;
+  analyser.refineParam = refineParam;
+
   if (resultsHolder)
   {
    analyser.doAnalysis(*resultsHolder, [&]() { return threadShouldExit(); });
   }
-  if (onFinish) onFinish();
+  if (onFinish && !threadShouldExit()) onFinish();
  }
 };
 

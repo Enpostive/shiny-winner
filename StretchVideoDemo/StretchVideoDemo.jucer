@@ -7,6 +7,10 @@
       <FILE id="cKXZLx" name="Main.cpp" compile="1" resource="0" file="Source/Main.cpp"/>
       <FILE id="ROzN2p" name="MainComponent.h" compile="0" resource="0" file="Source/MainComponent.h"/>
       <FILE id="gzxSSY" name="Analyser.h" compile="0" resource="0" file="../Source/Analyser.h"/>
+      <FILE id="Hogew4" name="ControlLayout.cpp" compile="1" resource="0"
+            file="Source/ControlLayout.cpp"/>
+      <FILE id="aViKVZ" name="ControlLayout.h" compile="0" resource="0" file="Source/ControlLayout.h"/>
+      <FILE id="Wkrjy9" name="Zoom.h" compile="0" resource="0" file="Source/Zoom.h"/>
     </GROUP>
   </MAINGROUP>
   <MODULES>

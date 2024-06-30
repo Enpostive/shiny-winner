@@ -151,6 +151,15 @@ class SampleDatabaseAccessor
  constexpr static char SelectAnalysisPartialSQLFront[] =
  "SELECT analysis FROM sampleFiles ";
  
+ constexpr static char SelectRowNumberPartialSQLFront[] =
+ "SELECT rownum FROM (SELECT *, ROW_NUMBER() OVER (";
+ 
+ constexpr static char SelectRowNumberPartialSQLAfterOrderBy[] =
+ ") AS rownum FROM sampleFiles ";
+ 
+ constexpr static char SelectRowNumberPartialSQLAfterWhereClause[] =
+ ") WHERE path = ?4;";
+ 
  constexpr static char SelectRowPartialSQLEnd[] =
  "LIMIT 1 OFFSET ?1;";
  
@@ -191,7 +200,7 @@ class SampleDatabaseAccessor
  juce::String path {""};
  int categoryId {0};
  
- void prepareRowSelect()
+ juce::String chooseWhereClause()
  {
   juce::String whereClause {""};
   
@@ -208,6 +217,13 @@ class SampleDatabaseAccessor
    whereClause = SelectRowFilterSQL;
   }
 
+  return whereClause;
+ }
+ 
+ void prepareRowSelect()
+ {
+  juce::String whereClause {chooseWhereClause()};
+  
   juce::String query = juce::String::fromUTF8(SelectRowPartialSQLFront);
   query += whereClause + orderBy;
   query += SelectRowPartialSQLEnd;
@@ -217,10 +233,15 @@ class SampleDatabaseAccessor
   dbConn.prepare(query, &countRowsStatement);
  }
  
- void finaliseAndPrepareRowSelect()
+ void finaliseRowSelect()
  {
   dbConn.dotry(sqlite3_finalize(selectRowsStatement), SQLITE_OK);
   dbConn.dotry(sqlite3_finalize(countRowsStatement), SQLITE_OK);
+ }
+ 
+ void finaliseAndPrepareRowSelect()
+ {
+  finaliseRowSelect();
   prepareRowSelect();
  }
  
@@ -228,7 +249,7 @@ class SampleDatabaseAccessor
  {
   if (rowNumber != -1)
   {
-   dbConn.dotry(sqlite3_bind_int(selectRowsStatement, 1, rowNumber), SQLITE_OK);
+   dbConn.dotry(sqlite3_bind_int(stmt, 1, rowNumber), SQLITE_OK);
   }
   if (searchTerm.isNotEmpty())
   {
@@ -271,8 +292,7 @@ public:
  ~SampleDatabaseAccessor()
  {
   std::unique_lock lockConn(dbConn.mtx);
-  dbConn.dotry(sqlite3_finalize(countRowsStatement), SQLITE_OK);
-  dbConn.dotry(sqlite3_finalize(selectRowsStatement), SQLITE_OK);
+  finaliseRowSelect();
  }
  
  int getNumRows()
@@ -331,6 +351,28 @@ public:
   std::unique_lock lock(dbConn.mtx);
   categoryFilterEnable = false;
   finaliseAndPrepareRowSelect();
+ }
+ 
+ int getRowNumberFromPath(const juce::String &path)
+ {
+  int result = -1;
+  juce::String query;
+  query = (juce::String::fromUTF8(SelectRowNumberPartialSQLFront) +
+           orderBy +
+           juce::String::fromUTF8(SelectRowNumberPartialSQLAfterOrderBy) +
+           chooseWhereClause() +
+           juce::String::fromUTF8(SelectRowNumberPartialSQLAfterWhereClause));
+  
+  sqlite3_stmt *stmt;
+  dbConn.prepare(query, &stmt);
+  bindFilterTerms(stmt);
+  dbConn.dotry(sqlite3_bind_text(stmt, 4, path.toUTF8(), -1, nullptr), SQLITE_OK);
+  if (sqlite3_step(stmt) == SQLITE_ROW)
+  {
+   result = sqlite3_column_int(stmt, 0);
+  }
+  dbConn.dotry(sqlite3_finalize(stmt), SQLITE_OK);
+  return result;
  }
  
  void selectRow(int rowNumber)
