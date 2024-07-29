@@ -125,7 +125,10 @@ public:
  }
  
  void handleAsyncUpdate() override
- { zoomer.repaint(); }
+ {
+  zoomer.connectEnvelope(&waveformAnalysis);
+  zoomer.repaint();
+ }
  
  bool isInterestedInFileDrag(const juce::StringArray &files) override
  { return true; }
@@ -150,7 +153,6 @@ public:
     analyser.resultsHolder = &waveformAnalysis;
     analyser.onFinish = [&]()
     {
-     zoomer.connectEnvelope(&waveformAnalysis);
      triggerAsyncUpdate();
     };
     

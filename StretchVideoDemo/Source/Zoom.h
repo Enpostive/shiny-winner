@@ -145,11 +145,11 @@ public:
   if (env)
   {
    envPath.startNewSubPath(0, 0);
-   for (auto &m : env->envMonoLeft->maxima)
+   if (env->envMonoLeft) for (auto &m : env->envMonoLeft->maxima)
    {
     envPath.lineTo(m.time, m.amplitude);
    }
-   if (drawStereo && env->stereo)
+   if (drawStereo && env->stereo && env->envRight)
    {
     envPath.startNewSubPath(0, 0);
     for (auto &m: env->envRight->maxima)
@@ -169,17 +169,18 @@ public:
   g.fillAll(juce::Colours::black);
    
   g.setColour(juce::Colours::white);
-  juce::Path drawPath = waveformPath;
-  drawPath.applyTransform(waveTransform);
-  g.strokePath(drawPath, juce::PathStrokeType(1));
+//  juce::Path drawPath = waveformPath;
+//  drawPath.applyTransform(waveTransform);
+  g.strokePath(waveformPath, juce::PathStrokeType(1), waveTransform);
   
   g.setColour(juce::Colours::green);
-  drawPath = envPath;
-  drawPath.applyTransform(waveTransform);
-  g.strokePath(drawPath, juce::PathStrokeType(1));
-  drawPath = envPath;
-  drawPath.applyTransform(invertedWaveTransform);
-  g.strokePath(drawPath, juce::PathStrokeType(1));
+//  drawPath = envPath;
+//  drawPath.applyTransform(waveTransform);
+  g.strokePath(envPath, juce::PathStrokeType(1), waveTransform);
+  g.strokePath(envPath, juce::PathStrokeType(1), invertedWaveTransform);
+//  drawPath = envPath;
+//  drawPath.applyTransform(invertedWaveTransform);
+//  g.strokePath(drawPath, juce::PathStrokeType(1));
   
   float guideY;
   g.setColour(juce::Colours::red);

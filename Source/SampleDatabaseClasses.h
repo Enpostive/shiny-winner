@@ -46,10 +46,12 @@ private:
  friend class SampleDatabaseAccessor;
  friend class SampleDatabaseModifier;
  
- // Database path during development
- constexpr static char DatabasePath[] =
- "/Users/adam/Documents/Development/JUCE/SampleDatabase/SampleDatabase.sqlite";
- 
+ constexpr static char InitialiseDatabaseSQL[] =
+ "CREATE TABLE categories (category varchar(40) not null default empty);"
+ "CREATE TABLE sampleFiles (path text not null unique, categoryid integer, analysis text);"
+ "CREATE TABLE newSampleFiles (path text, categoryid int, analysis text);"
+ "INSERT INTO categories VALUES (\"Kick\"), (\"Snare\"), (\"Clap\"), (\"Tom\"), (\"Hat\"), (\"Cymbal\"), (\"Ride\"), (\"Percussion\");";
+  
  constexpr static char SelectCategoriesSQL[] =
  "SELECT rowid, category FROM categories;";
  
@@ -80,10 +82,27 @@ public:
  SampleDatabaseConnection() :
  categories(_categories)
  {
-  int rc = sqlite3_open(DatabasePath, &db);
+  juce::File databaseFile = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("SampleDatabase").getChildFile("db.sqlite");
+  databaseFile.create();
+  bool initialiseDatabase = (databaseFile.getSize() == 0);
+  juce::String databasePath = databaseFile.getFullPathName();
+  
+  int rc = sqlite3_open(databasePath.toUTF8(), &db);
   if (rc) throw std::runtime_error("Can't open database");
   
-  reloadCategoriesIntoMap();
+  if (initialiseDatabase)
+  {
+   dotry(sqlite3_exec(db, InitialiseDatabaseSQL, nullptr, nullptr, nullptr), SQLITE_OK);
+  }
+  
+  try
+  {
+   reloadCategoriesIntoMap();
+  }
+  catch (Exception &e)
+  {
+   // If we have a database exception here then we have a corrupted database
+  }
  }
  
  ~SampleDatabaseConnection()

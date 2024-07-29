@@ -172,6 +172,7 @@ envelopeEditor(audioProcessor.envelopeData)
  envelopeEditor.setGrid(0);
  
  audioProcessor.addChangeListener(this);
+ audioProcessor.changeSelectionInEditor = true;
  audioProcessor.triggerAsyncUpdate();
  // If you have animated components, uncomment this line
  // startTimerHz(30);

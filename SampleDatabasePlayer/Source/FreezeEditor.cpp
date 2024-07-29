@@ -7,12 +7,12 @@
   the "//[xyz]" and "//[/xyz]" sections will be retained when the file is loaded
   and re-saved.
 
-  Created with Projucer version: 7.0.12
+  Created with Projucer version: 8.0.0
 
   ------------------------------------------------------------------------------
 
   The Projucer is part of the JUCE library.
-  Copyright (c) 2020 - Raw Material Software Limited.
+  Copyright (c) - Raw Material Software Limited.
 
   ==============================================================================
 */
@@ -59,7 +59,7 @@ FreezeEditor::FreezeEditor ()
     juce__label.reset (new juce::Label ("new label",
                                         TRANS ("Clumping Frequency")));
     addAndMakeVisible (juce__label.get());
-    juce__label->setFont (juce::Font (15.00f, juce::Font::plain).withTypefaceStyle ("Regular"));
+    juce__label->setFont (juce::Font (juce::FontOptions(15.00f, juce::Font::plain)).withTypefaceStyle ("Regular"));
     juce__label->setJustificationType (juce::Justification::centredLeft);
     juce__label->setEditable (false, false, false);
     juce__label->setColour (juce::TextEditor::textColourId, juce::Colours::black);
@@ -79,7 +79,7 @@ FreezeEditor::FreezeEditor ()
     juce__label2.reset (new juce::Label ("new label",
                                          TRANS ("Remove Threshold")));
     addAndMakeVisible (juce__label2.get());
-    juce__label2->setFont (juce::Font (15.00f, juce::Font::plain).withTypefaceStyle ("Regular"));
+    juce__label2->setFont (juce::Font (juce::FontOptions(15.00f, juce::Font::plain)).withTypefaceStyle ("Regular"));
     juce__label2->setJustificationType (juce::Justification::centredLeft);
     juce__label2->setEditable (false, false, false);
     juce__label2->setColour (juce::TextEditor::textColourId, juce::Colours::black);
@@ -99,7 +99,7 @@ FreezeEditor::FreezeEditor ()
     juce__label3.reset (new juce::Label ("new label",
                                          TRANS ("Reshape Amount")));
     addAndMakeVisible (juce__label3.get());
-    juce__label3->setFont (juce::Font (15.00f, juce::Font::plain).withTypefaceStyle ("Regular"));
+    juce__label3->setFont (juce::Font (juce::FontOptions(15.00f, juce::Font::plain)).withTypefaceStyle ("Regular"));
     juce__label3->setJustificationType (juce::Justification::centredLeft);
     juce__label3->setEditable (false, false, false);
     juce__label3->setColour (juce::TextEditor::textColourId, juce::Colours::black);
@@ -119,7 +119,7 @@ FreezeEditor::FreezeEditor ()
     analysisFeedback.reset (new juce::Label ("analysisFeedback",
                                              juce::String()));
     addAndMakeVisible (analysisFeedback.get());
-    analysisFeedback->setFont (juce::Font (15.00f, juce::Font::plain).withTypefaceStyle ("Regular"));
+    analysisFeedback->setFont (juce::Font (juce::FontOptions(15.00f, juce::Font::plain)).withTypefaceStyle ("Regular"));
     analysisFeedback->setJustificationType (juce::Justification::centredRight);
     analysisFeedback->setEditable (false, false, false);
     analysisFeedback->setColour (juce::TextEditor::textColourId, juce::Colours::black);
